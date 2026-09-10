@@ -1,0 +1,65 @@
+<%- include('partials/head', { active }) %>
+
+<script src="/public/js/printer.js"></script>
+
+<div x-data="printerPage()" x-init="init()">
+  <h1 class="text-2xl font-bold mb-1">Imprimante</h1>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Configurez l'imprimante thermique réseau (ESC/POS, port 9100 par défaut).</p>
+
+  <div class="card p-6 max-w-xl" x-show="!loading" x-cloak>
+    <div class="space-y-4">
+      <div>
+        <label class="field-label" for="host">Adresse IP de l'imprimante</label>
+        <input id="host" type="text" x-model="form.host" placeholder="192.168.1.50" class="field-input" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="field-label" for="port">Port</label>
+          <input id="port" type="number" min="1" max="65535" x-model.number="form.port" class="field-input" />
+        </div>
+        <div>
+          <label class="field-label" for="columns">Colonnes</label>
+          <select id="columns" x-model.number="form.columns" class="field-input">
+            <option :value="42">42 colonnes</option>
+            <option :value="48">48 colonnes</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label" for="profile">Profil de caractères</label>
+        <select id="profile" x-model="form.profile" class="field-input">
+          <option value="CP437">CP437 (US, standard Epson)</option>
+          <option value="CP858">CP858 (Europe de l'Ouest + €, recommandé)</option>
+          <option value="CP1252">CP1252 (Windows Latin)</option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choisissez le profil compatible avec votre imprimante pour un affichage correct des accents.</p>
+      </div>
+
+      <div>
+        <label class="field-label" for="printWidthPx">Largeur d'impression (image/logo)</label>
+        <select id="printWidthPx" x-model.number="form.printWidthPx" class="field-input">
+          <option :value="576">576 points (imprimante 80mm, la plupart des modèles)</option>
+          <option :value="384">384 points (imprimante 58mm)</option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Utilisée uniquement pour redimensionner un logo image (module En-tête). Sans effet sur le texte.</p>
+      </div>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <button type="button" class="btn-primary" :disabled="saving" @click="save()">
+          <span x-show="!saving">Enregistrer</span>
+          <span x-show="saving" x-cloak>Enregistrement...</span>
+        </button>
+        <button type="button" class="btn-secondary" :disabled="testing" @click="test()">
+          <span x-show="!testing">Tester l'impression</span>
+          <span x-show="testing" x-cloak>Envoi en cours...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="loading" class="text-gray-500">Chargement...</div>
+</div>
+
+<%- include('partials/foot') %>

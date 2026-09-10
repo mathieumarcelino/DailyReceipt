@@ -1,0 +1,56 @@
+<%- include('partials/head', { active }) %>
+
+<script src="/public/js/schedule.js"></script>
+
+<div x-data="schedulePage()" x-init="init()">
+  <h1 class="text-2xl font-bold mb-1">Planification</h1>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Définissez l'heure d'impression quotidienne du ticket, ou déclenchez-la manuellement.</p>
+
+  <div class="grid gap-6 max-w-xl" x-show="!loading" x-cloak>
+    <div class="card p-6 space-y-4">
+      <div>
+        <label class="field-label" for="time">Heure d'impression quotidienne</label>
+        <input id="time" type="time" x-model="form.time" class="field-input max-w-[10rem]" />
+      </div>
+
+      <label class="flex items-center gap-3 cursor-pointer w-fit">
+        <input type="checkbox" x-model="form.enabled" class="sr-only peer" />
+        <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
+        <span class="text-sm font-medium">Impression automatique activée</span>
+      </label>
+
+      <div class="pt-2">
+        <button type="button" class="btn-primary" :disabled="saving" @click="save()">
+          <span x-show="!saving">Enregistrer</span>
+          <span x-show="saving" x-cloak>Enregistrement...</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card p-6 space-y-4">
+      <div>
+        <h2 class="font-semibold mb-1">Impression manuelle</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Force la génération et l'impression du ticket du jour, sans attendre l'heure planifiée.</p>
+      </div>
+      <button type="button" class="btn-primary" :disabled="printing" @click="printNow()">
+        <span x-show="!printing">Imprimer maintenant</span>
+        <span x-show="printing" x-cloak>Impression en cours...</span>
+      </button>
+
+      <div class="text-sm border-t border-gray-200 dark:border-gray-800 pt-4" x-show="lastRun">
+        <span class="text-gray-500 dark:text-gray-400">Dernière impression : </span>
+        <span x-text="formatTimestamp(lastRun?.timestamp)"></span>
+        <span
+          class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+          :class="lastRun?.status === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'"
+          x-text="lastRun?.status === 'success' ? 'Réussie' : 'Échec'"
+        ></span>
+        <p class="text-red-600 dark:text-red-400 mt-1" x-show="lastRun?.status === 'error'" x-text="lastRun?.message"></p>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="loading" class="text-gray-500">Chargement...</div>
+</div>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,195 @@
+<%- include('partials/head', { active }) %>
+
+<script src="/public/js/builder.js"></script>
+
+<div x-data="builderPage()" x-init="init()">
+  <h1 class="text-2xl font-bold mb-1">Constructeur de ticket</h1>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Activez, ordonnez et configurez les modules affichés sur le ticket. L'aperçu à droite reflète le rendu réel sur papier.</p>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
+    <!-- Liste des modules -->
+    <div class="space-y-3" x-show="!loading" x-cloak>
+      <template x-for="(mod, index) in modules" :key="mod.id">
+        <div class="card overflow-hidden">
+          <div class="p-4 flex items-center gap-3">
+            <div class="flex flex-col gap-0.5 shrink-0">
+              <button type="button" class="btn-icon" :disabled="index === 0" @click="move(index, -1)" title="Monter">▲</button>
+              <button type="button" class="btn-icon" :disabled="index === modules.length - 1" @click="move(index, 1)" title="Descendre">▼</button>
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold" x-text="mod.name"></div>
+              <div class="text-sm text-gray-500 dark:text-gray-400 truncate" x-text="mod.description"></div>
+            </div>
+
+            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+              <input type="checkbox" x-model="mod.enabled" @change="setEnabled(mod)" class="sr-only peer" />
+              <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
+            </label>
+
+            <button type="button" class="btn-secondary shrink-0" @click="toggle(mod.id)" x-text="expandedId === mod.id ? 'Fermer' : 'Configurer'"></button>
+          </div>
+
+          <div class="border-t border-gray-200 dark:border-gray-800 p-4 bg-gray-50/50 dark:bg-gray-900/50" x-show="expandedId === mod.id" x-cloak x-transition>
+            <template x-if="mod.configSchema.length === 0">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Ce module n'a aucun paramètre.</p>
+            </template>
+
+            <template x-for="field in mod.configSchema" :key="field.key">
+              <div class="mb-4">
+                <template x-if="field.type === 'text'">
+                  <div>
+                    <label class="field-label" x-text="field.label"></label>
+                    <input type="text" class="field-input" x-model="mod.config[field.key]" :placeholder="field.placeholder || ''" />
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'number'">
+                  <div>
+                    <label class="field-label" x-text="field.label"></label>
+                    <input type="number" class="field-input" x-model.number="mod.config[field.key]" :step="field.step || 1" />
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'boolean'">
+                  <label class="flex items-center gap-3 cursor-pointer w-fit">
+                    <input type="checkbox" x-model="mod.config[field.key]" class="sr-only peer" />
+                    <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
+                    <span class="text-sm font-medium" x-text="field.label"></span>
+                  </label>
+                </template>
+
+                <template x-if="field.type === 'select'">
+                  <div>
+                    <label class="field-label" x-text="field.label"></label>
+                    <select class="field-input" x-model="mod.config[field.key]">
+                      <template x-for="opt in field.options" :key="opt.value">
+                        <option :value="opt.value" x-text="opt.label"></option>
+                      </template>
+                    </select>
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'image'">
+                  <div>
+                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-3">
+                      <div class="w-24 h-16 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                        <img x-show="mod.config[field.key]" :src="mod.config[field.key]" class="max-w-full max-h-full object-contain" />
+                        <span x-show="!mod.config[field.key]" class="text-[10px] text-gray-400 text-center px-1">Aucun logo</span>
+                      </div>
+                      <div class="flex flex-col gap-2">
+                        <label class="btn-secondary !py-1 !px-3 text-xs cursor-pointer w-fit">
+                          Choisir un PNG
+                          <input type="file" accept="image/png" class="hidden" @change="onImageSelected(mod, field, $event)" />
+                        </label>
+                        <button type="button" class="text-xs text-red-600 dark:text-red-400 hover:underline w-fit" x-show="mod.config[field.key]" @click="removeImage(mod, field)">Retirer le logo</button>
+                      </div>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG uniquement, 500 Ko max. Redimensionné et tramé en noir/blanc automatiquement pour l'impression.</p>
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'array'">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="field-label mb-0" x-text="field.label"></span>
+                      <button type="button" class="btn-secondary !py-1 !px-2 text-xs" @click="addArrayItem(mod, field)">+ Ajouter</button>
+                    </div>
+
+                    <div class="space-y-2">
+                      <template x-for="(item, idx) in (mod.config[field.key] || [])" :key="idx">
+                        <div class="flex items-end gap-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
+                            <template x-for="subField in field.itemSchema" :key="subField.key">
+                              <div>
+                                <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1" x-text="subField.label"></label>
+
+                                <template x-if="subField.type === 'select'">
+                                  <select class="field-input" x-model="item[subField.key]">
+                                    <template x-for="opt in subField.options" :key="opt.value">
+                                      <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
+                                  </select>
+                                </template>
+
+                                <template x-if="subField.type === 'text'">
+                                  <input type="text" class="field-input" x-model="item[subField.key]" :placeholder="subField.placeholder || ''" />
+                                </template>
+
+                                <template x-if="subField.type === 'number'">
+                                  <input type="number" class="field-input" x-model.number="item[subField.key]" />
+                                </template>
+
+                                <template x-if="subField.type === 'boolean'">
+                                  <input type="checkbox" x-model="item[subField.key]" class="h-5 w-5 rounded border-gray-300" />
+                                </template>
+                              </div>
+                            </template>
+                          </div>
+                          <button type="button" class="btn-icon" @click="removeArrayItem(mod, field, idx)" title="Supprimer">✕</button>
+                        </div>
+                      </template>
+
+                      <p class="text-xs text-gray-400" x-show="!(mod.config[field.key] || []).length">Aucun élément. Cliquez sur "+ Ajouter".</p>
+                    </div>
+                  </div>
+                </template>
+
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-show="field.help" x-text="field.help"></p>
+              </div>
+            </template>
+
+            <div class="pt-2">
+              <button type="button" class="btn-primary" :disabled="savingId === mod.id" @click="saveConfig(mod)">
+                <span x-show="savingId !== mod.id">Enregistrer la configuration</span>
+                <span x-show="savingId === mod.id" x-cloak>Enregistrement...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div x-show="loading" class="text-gray-500">Chargement...</div>
+
+    <!-- Aperçu -->
+    <div class="lg:sticky lg:top-20">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Aperçu du ticket</h2>
+        <button type="button" class="btn-secondary !py-1 !px-3 text-xs" :disabled="previewLoading" @click="loadPreview()">
+          <span x-show="!previewLoading">Rafraîchir</span>
+          <span x-show="previewLoading" x-cloak>...</span>
+        </button>
+      </div>
+
+      <div class="bg-white text-black rounded-lg shadow-lg mx-auto p-4 font-mono text-[12px] overflow-x-auto" :style="`width: calc(${preview.columns || 48}ch + 2rem); min-height: 200px;`">
+        <template x-for="(line, i) in preview.lines" :key="i">
+          <div>
+            <template x-if="line.type === 'image'">
+              <div class="py-1" :class="line.align === 'center' ? 'text-center' : line.align === 'right' ? 'text-right' : 'text-left'">
+                <img :src="line.image.previewPngDataUrl" class="max-w-full h-auto inline-block" alt="Logo du ticket" />
+              </div>
+            </template>
+            <template x-if="line.type !== 'image'">
+              <div
+                class="whitespace-pre font-mono text-[12px] leading-[1.45]"
+                :class="[
+                  line.align === 'center' ? 'text-center' : line.align === 'right' ? 'text-right' : 'text-left',
+                  line.bold ? 'font-bold' : '',
+                  line.underline ? 'underline' : '',
+                  (line.size === 'wide' || line.size === 'double') ? 'tracking-wider text-[13px]' : '',
+                  (line.size === 'tall' || line.size === 'double') ? 'text-[15px] leading-[1.7]' : '',
+                ]"
+                x-text="line.type === 'blank' ? ' ' : line.text"
+              ></div>
+            </template>
+          </div>
+        </template>
+        <p class="text-gray-400 text-xs text-center py-6" x-show="!preview.lines.length">Aucun module actif.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/foot') %>

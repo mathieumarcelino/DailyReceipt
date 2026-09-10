@@ -1,0 +1,18 @@
+services:
+  dailyreceipt:
+    build: .
+    # Ou, une fois l'image publiée sur un registre :
+    # image: ghcr.io/votre-compte/dailyreceipt:latest
+    container_name: dailyreceipt
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: "Europe/Paris"
+      PORT: "3000"
+      CONFIG_PATH: "/data/config.json"
+    volumes:
+      - dailyreceipt-data:/data
+
+volumes:
+  dailyreceipt-data:
