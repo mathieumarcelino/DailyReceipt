@@ -9,6 +9,7 @@ import pagesRoutes from "./routes/pages.routes";
 import configRoutes from "./routes/config.routes";
 import modulesRoutes from "./routes/modules.routes";
 import printRoutes from "./routes/print.routes";
+import sportsRoutes from "./routes/sports.routes";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -31,6 +32,7 @@ async function main() {
   await app.register(configRoutes);
   await app.register(modulesRoutes);
   await app.register(printRoutes);
+  await app.register(sportsRoutes);
 
   app.setErrorHandler((err: FastifyError, _req, reply) => {
     app.log.error(err);

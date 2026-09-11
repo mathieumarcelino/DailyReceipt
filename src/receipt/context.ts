@@ -46,6 +46,14 @@ export class ReceiptBuilder implements ReceiptContext {
     }
   }
 
+  rawLine(content: string, options: TextOptions = {}): void {
+    const align = options.align ?? "left";
+    const bold = options.bold ?? false;
+    const underline = options.underline ?? false;
+    const size = options.size ?? "normal";
+    this.pushLine(content.slice(0, this.width), align, bold, underline, size);
+  }
+
   separator(char = "-"): void {
     this.pushLine(char.repeat(this.width), "left", false, false, "normal");
   }

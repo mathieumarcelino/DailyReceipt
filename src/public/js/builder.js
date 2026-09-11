@@ -8,10 +8,45 @@ function defaultFieldValue(field) {
       return field.options?.[0]?.value ?? "";
     case "array":
       return [];
+    case "team-search":
+      return null;
     case "image":
+    case "password":
     default:
       return "";
   }
+}
+
+/** État Alpine local (un par ligne du tableau "équipes suivies") pour le flux rechercher -> choisir. */
+function teamSearchState(item) {
+  return {
+    query: item.team?.query || "",
+    loading: false,
+    results: [],
+    error: null,
+
+    async search() {
+      const q = this.query.trim();
+      if (!q) return;
+      this.loading = true;
+      this.error = null;
+      this.results = [];
+      try {
+        const data = await api(`/api/sports/search-teams?q=${encodeURIComponent(q)}`);
+        if (!data.teams?.length) this.error = "Aucune équipe trouvée pour ce nom.";
+        else this.results = data.teams;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    choose(item, candidate) {
+      item.team = candidate;
+      this.results = [];
+    },
+  };
 }
 
 const MAX_IMAGE_BYTES = 500 * 1024;

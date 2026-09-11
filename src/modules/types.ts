@@ -4,10 +4,12 @@
  */
 export type ConfigField =
   | { key: string; label: string; type: "text"; placeholder?: string; help?: string }
+  | { key: string; label: string; type: "password"; placeholder?: string; help?: string }
   | { key: string; label: string; type: "number"; min?: number; max?: number; step?: number; help?: string }
   | { key: string; label: string; type: "boolean"; help?: string }
   | { key: string; label: string; type: "select"; options: { value: string; label: string }[]; help?: string }
   | { key: string; label: string; type: "image"; help?: string }
+  | { key: string; label: string; type: "team-search"; help?: string }
   | {
       key: string;
       label: string;
@@ -66,6 +68,13 @@ export interface ReceiptContext {
 
   /** Ligne avec un libellé à gauche et une valeur alignée à droite (ex: "Bitcoin ........... 45 000 €"). */
   row(left: string, right: string, options?: { bold?: boolean }): void;
+
+  /**
+   * Ajoute une ligne déjà mise en forme, telle quelle (tronquée à `width` si besoin) : contrairement
+   * à `text()`, ne fait ni word-wrap ni normalisation des espaces. Utile pour un alignement précis
+   * calculé à la main (ex: colonnes côte à côte) où les espaces de padding doivent être préservés.
+   */
+  rawLine(content: string, options?: TextOptions): void;
 
   /** Insère une image déjà rastérisée (voir rasterizePng dans src/escpos/image-raster.ts). */
   image(raster: RasterImage, options?: { align?: "left" | "center" | "right" }): void;
