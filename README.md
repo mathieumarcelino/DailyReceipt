@@ -24,6 +24,7 @@ dailyreceipt/
 ├── scripts/
 │   ├── copy-vendor.js      # copie Alpine.js dans src/public (postinstall)
 │   └── copy-assets.js      # copie views + public dans dist/ (build)
+├── docs/modules/           # une fiche détaillée par module (voir plus bas)
 ├── data/                   # config.json (persisté via volume Docker)
 └── src/
     ├── server.ts           # bootstrap Fastify
@@ -37,6 +38,7 @@ dailyreceipt/
     │   ├── weather.module.ts
     │   ├── birthdays.module.ts
     │   ├── markets.module.ts
+    │   ├── sports.module.ts
     │   └── footer.module.ts
     ├── receipt/
     │   └── context.ts       # ReceiptBuilder : word-wrap + mise en page (partagé ESC/POS + aperçu web)
@@ -73,17 +75,18 @@ interface ReceiptModule<TConfig, TData> {
 
 **Pour ajouter un module** : créer `src/modules/mon-module.module.ts` implémentant `ReceiptModule`, puis l'ajouter au tableau `MODULE_REGISTRY` dans [src/modules/registry.ts](src/modules/registry.ts). Rien d'autre à modifier : l'UI (toggle, ordre, formulaire de config) et l'aperçu s'adaptent automatiquement.
 
-Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires et les valeurs boursières) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel.
+Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires, les valeurs boursières et les équipes suivies) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel, via la primitive `ctx.image()`. Le type `{ type: 'team-search' }` est un widget dédié (rechercher → choisir dans une liste de résultats) plutôt qu'un simple champ texte — utilisé par le module Sports, voir sa documentation pour le détail.
 
-### Impression d'images (logo)
+### Documentation par module
 
-`ctx.image(raster, options)` insère une image dans le ticket. Le traitement (voir [src/escpos/image-raster.ts](src/escpos/image-raster.ts)) est entièrement synchrone et ne dépend d'aucune lib native :
-1. décodage PNG via `pngjs` (pur JS),
-2. redimensionnement par moyennage de zone à la largeur d'impression (`printWidthPx` dans les paramètres imprimante, 384 ou 576 points),
-3. tramage de Floyd-Steinberg pour convertir en 1-bit noir/blanc,
-4. empaquetage en commande ESC/POS `GS v 0` (raster bit image).
+Chaque module a sa propre fiche détaillée (rendu exact sur le ticket, champs de configuration, source de données, particularités) :
 
-L'aperçu web réutilise le résultat tramé (pas l'image d'origine) : ce que vous voyez dans le Constructeur est fidèle au rendu papier, artefacts de tramage inclus. Actuellement réservé au module En-tête (logo remplaçant le titre texte), mais la primitive `ctx.image()` est disponible pour tout futur module (QR code, etc.).
+- [En-tête](docs/modules/header.md)
+- [Météo](docs/modules/weather.md)
+- [Anniversaires du jour](docs/modules/birthdays.md)
+- [Bourse / Crypto](docs/modules/markets.md)
+- [Sports](docs/modules/sports.md)
+- [Pied de page](docs/modules/footer.md)
 
 ## Lancer en local
 
