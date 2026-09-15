@@ -7,38 +7,51 @@ import { listModules } from "./modules.service";
  * actif dans l'ordre configuré. Une erreur d'un module (API météo down, etc.)
  * n'interrompt pas les autres : elle est affichée comme une ligne d'avertissement.
  *
- * Les séparateurs entre modules sont gérés ici plutôt que par chaque module
- * individuellement : "=" entre l'en-tête et le corps ainsi qu'entre le corps
- * et le pied de page, "-" entre les autres modules, et aucun après le dernier
- * module actif.
+ * Chaque module est d'abord rendu dans son propre buffer isolé : cela permet de
+ * détecter s'il n'a produit aucune ligne (ex: Sports sans aucun match) et de ne
+ * jamais lui accoler de séparateur dans ce cas. Les séparateurs entre modules
+ * sont ensuite insérés ici plutôt que par chaque module individuellement : "="
+ * entre l'en-tête et le corps ainsi qu'entre le corps et le pied de page, "-"
+ * entre les autres modules, et aucun après le dernier module non vide.
  */
 export async function buildReceiptLines(columns: number, widthPx: number): Promise<ReceiptLine[]> {
   const modules = await listModules();
   const enabled = modules.filter((m) => m.enabled).sort((a, b) => a.order - b.order);
 
-  const ctx = new ReceiptBuilder(columns, widthPx);
+  const segments: { id: string; lines: ReceiptLine[] }[] = [];
 
-  for (let i = 0; i < enabled.length; i++) {
-    const view = enabled[i];
+  for (const view of enabled) {
     const mod = getModule(view.id);
     if (!mod) continue;
 
-    ctx.currentModuleId = view.id;
+    const moduleCtx = new ReceiptBuilder(columns, widthPx);
+    moduleCtx.currentModuleId = view.id;
     try {
       const data = await mod.fetchData(view.config);
-      mod.renderReceipt(data, ctx, view.config);
+      mod.renderReceipt(data, moduleCtx, view.config);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      ctx.text(`${mod.name.toUpperCase()}`, { bold: true, underline: true });
-      ctx.text(`Module indisponible (${message})`);
+      moduleCtx.text(`${mod.name.toUpperCase()}`, { bold: true, underline: true });
+      moduleCtx.text(`Module indisponible (${message})`);
     }
 
-    const next = enabled[i + 1];
-    if (next) {
-      const isMajorBoundary = view.id === "header" || next.id === "footer";
-      ctx.separator(isMajorBoundary ? "=" : "-");
-    }
+    const lines = moduleCtx.getLines();
+    if (lines.length > 0) segments.push({ id: view.id, lines });
   }
 
-  return ctx.getLines();
+  const result: ReceiptLine[] = [];
+  segments.forEach((segment, index) => {
+    result.push(...segment.lines);
+    const next = segments[index + 1];
+    if (next) {
+      const isMajorBoundary = segment.id === "header" || next.id === "footer";
+      result.push(separatorLine(columns, isMajorBoundary ? "=" : "-", segment.id));
+    }
+  });
+
+  return result;
+}
+
+function separatorLine(width: number, char: string, moduleId: string): ReceiptLine {
+  return { type: "line", text: char.repeat(width), align: "left", bold: false, underline: false, size: "normal", moduleId };
 }
