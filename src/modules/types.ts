@@ -92,6 +92,8 @@ export interface ReceiptModule<TConfig = Record<string, unknown>, TData = unknow
   name: string;
   /** Courte description affichée dans le Constructeur. */
   description?: string;
+  /** Source des données affichée dans le Constructeur (URL de l'API, ou "Aucune" pour un module sans API externe). */
+  dataSource?: string;
   /** Schéma des paramètres éditables par l'utilisateur. */
   configSchema: ConfigField[];
   /** Valeurs par défaut appliquées à la première activation du module. */

@@ -83,7 +83,8 @@ interface SportsData {
 const sportsModule: ReceiptModule<SportsConfig, SportsData> = {
   id: "sports",
   name: "Sports",
-  description: "Suivi de plusieurs équipes via l'API publique ESPN : match du jour, résultat de la veille.",
+  description: "Suivi de vos équipes, match du jour et résultat de la veille",
+  dataSource: "espn.com",
   configSchema: [
     {
       key: "teams",

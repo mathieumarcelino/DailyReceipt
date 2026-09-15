@@ -15,7 +15,7 @@ interface HeaderData {
 const headerModule: ReceiptModule<HeaderConfig, HeaderData> = {
   id: "header",
   name: "En-tête",
-  description: "Titre (texte ou logo) et date du jour formatée en français.",
+  description: "Titre (texte ou logo) et date du jour formatée en français",
   configSchema: [
     { key: "title", label: "Titre affiché", type: "text", placeholder: "DAILYRECEIPT", help: "Ignoré si un logo est défini ci-dessous." },
     { key: "logo", label: "Logo (PNG, remplace le titre)", type: "image" },

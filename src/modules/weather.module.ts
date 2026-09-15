@@ -15,7 +15,8 @@ interface WeatherData {
 const weatherModule: ReceiptModule<WeatherConfig, WeatherData> = {
   id: "weather",
   name: "Météo",
-  description: "Températures et conditions du jour via Open-Meteo (sans clé API).",
+  description: "Températures et conditions du jour",
+  dataSource: "open-meteo.com",
   configSchema: [
     { key: "city", label: "Ville affichée", type: "text", placeholder: "Paris" },
     { key: "latitude", label: "Latitude", type: "number", step: 0.0001, help: "Coordonnées GPS de la ville" },

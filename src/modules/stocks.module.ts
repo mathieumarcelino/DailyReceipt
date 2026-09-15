@@ -24,7 +24,8 @@ interface StocksData {
 const stocksModule: ReceiptModule<StocksConfig, StocksData> = {
   id: "stocks",
   name: "Bourse",
-  description: "Cours d'actions via Yahoo Finance.",
+  description: "Cours d'actions",
+  dataSource: "finance.yahoo.com",
   configSchema: [
     {
       key: "assets",

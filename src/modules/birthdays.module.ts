@@ -19,7 +19,7 @@ const DATE_RE = /^(\d{1,2})\/(\d{1,2})$/;
 const birthdaysModule: ReceiptModule<BirthdaysConfig, BirthdaysData> = {
   id: "birthdays",
   name: "Anniversaires du jour",
-  description: "Liste locale de personnes (jj/mm), mise en avant si c'est leur jour.",
+  description: "Rappel des anniversaires du jour",
   configSchema: [
     {
       key: "people",

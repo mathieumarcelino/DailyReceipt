@@ -24,7 +24,8 @@ interface CryptoData {
 const cryptoModule: ReceiptModule<CryptoConfig, CryptoData> = {
   id: "crypto",
   name: "Crypto",
-  description: "Cours de cryptomonnaies via CoinGecko.",
+  description: "Cours de cryptomonnaies",
+  dataSource: "coingecko.com",
   configSchema: [
     {
       key: "assets",

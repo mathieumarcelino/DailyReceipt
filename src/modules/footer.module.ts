@@ -14,7 +14,7 @@ interface FooterData {
 const footerModule: ReceiptModule<FooterConfig, FooterData> = {
   id: "footer",
   name: "Pied de page",
-  description: "Citation aléatoire inspirante et mention de génération.",
+  description: "Citation aléatoire inspirante et mention de génération",
   configSchema: [{ key: "showQuote", label: "Afficher une citation", type: "boolean" }],
   defaultConfig: { showQuote: true },
 

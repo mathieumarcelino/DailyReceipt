@@ -6,6 +6,7 @@ export interface ModuleView {
   id: string;
   name: string;
   description?: string;
+  dataSource?: string;
   configSchema: ConfigField[];
   enabled: boolean;
   order: number;
@@ -71,6 +72,7 @@ export async function listModules(): Promise<ModuleView[]> {
       id: mod.id,
       name: mod.name,
       description: mod.description,
+      dataSource: mod.dataSource,
       configSchema: mod.configSchema,
       enabled: instance.enabled,
       order: instance.order,
