@@ -53,7 +53,6 @@ const birthdaysModule: ReceiptModule<BirthdaysConfig, BirthdaysData> = {
         ctx.text(`* Joyeux anniversaire ${name} ! *`, { align: "center", bold: true });
       }
     }
-    ctx.separator();
   },
 };
 

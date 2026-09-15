@@ -84,7 +84,6 @@ const marketsModule: ReceiptModule<MarketsConfig, MarketsData> = {
       const change = q.changePct != null ? ` (${sign}${q.changePct.toFixed(1)}%)` : "";
       ctx.row(q.label, `${formatPrice(q.price)} ${q.currency}${change}`);
     }
-    ctx.separator();
   },
 };
 

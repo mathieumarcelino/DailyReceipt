@@ -7,14 +7,13 @@ Citation aléatoire inspirante et mention de génération du ticket.
 ## Rendu sur le ticket
 
 ```
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    « La vie, c'est comme une bicyclette, il faut
       avancer pour ne pas perdre l'équilibre. »
 
           Généré par DailyReceipt le 07:30
 ```
 
-Si la citation est désactivée, seule la mention de génération est imprimée (sans le séparateur en tildes).
+Si la citation est désactivée, seule la mention de génération est imprimée.
 
 ## Configuration
 

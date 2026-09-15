@@ -154,7 +154,6 @@ const sportsModule: ReceiptModule<SportsConfig, SportsData> = {
 
       if (index < withContent.length - 1) ctx.spacer(1);
     });
-    ctx.separator();
   },
 };
 

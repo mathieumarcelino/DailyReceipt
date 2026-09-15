@@ -24,7 +24,6 @@ const footerModule: ReceiptModule<FooterConfig, FooterData> = {
 
   renderReceipt(data, ctx) {
     if (data.quote) {
-      ctx.separator("~");
       ctx.text(`« ${data.quote} »`, { align: "center" });
     }
     ctx.spacer(1);

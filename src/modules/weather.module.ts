@@ -57,7 +57,6 @@ const weatherModule: ReceiptModule<WeatherConfig, WeatherData> = {
     ctx.row("Actuellement", `${Math.round(data.current.temperature)}°C`);
     ctx.row("Min / Max du jour", `${Math.round(data.daily.min)}°C / ${Math.round(data.daily.max)}°C`);
     ctx.row("Vent", `${Math.round(data.current.wind)} km/h`);
-    ctx.separator();
   },
 };
 

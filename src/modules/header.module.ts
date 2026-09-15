@@ -42,7 +42,6 @@ const headerModule: ReceiptModule<HeaderConfig, HeaderData> = {
 
     ctx.spacer(1);
     ctx.text(formatFrenchDate(data.now), { align: "center" });
-    ctx.separator("=");
   },
 };
 
