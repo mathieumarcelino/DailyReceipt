@@ -1,0 +1,33 @@
+# Module Bourse (`stocks`)
+
+Cours d'une ou plusieurs actions suivies au choix.
+
+**Fichier source** : [src/modules/stocks.module.ts](../../src/modules/stocks.module.ts)
+
+## Rendu sur le ticket
+
+```
+BOURSE
+iShares MSCI World               6.91 EUR (+0.5%)
+Apple (AAPL)                   187.42 USD (-0.2%)
+```
+
+Une valeur dont la récupération échoue s'affiche avec `N/A` plutôt que de faire échouer tout le module.
+
+## Configuration
+
+| Champ | Type | Description |
+|---|---|---|
+| `assets` | liste | Une entrée par action : `symbol` (symbole Yahoo Finance) et `label` (libellé affiché sur le ticket). |
+
+Format du `symbol` : symbole Yahoo Finance (ex: `AAPL`, `MC.PA` pour une valeur Euronext Paris).
+
+## Source de données
+
+Endpoint non officiel Yahoo Finance — `GET https://query1.finance.yahoo.com/v8/finance/chart/{symbol}`, un appel par action suivie. Ne nécessite pas de clé.
+
+## Particularités
+
+- Le séparateur de milliers utilise une espace ASCII normale et non `toLocaleString('fr-FR')`, dont l'espace fine insécable (U+202F) n'existe dans aucune page de code ESC/POS et s'imprimerait comme un caractère invalide.
+- L'échec d'une valeur (symbole invalide, API indisponible...) n'affecte que cette ligne (`N/A`), pas le reste du module ni du ticket.
+- Anciennement fusionné avec le module Crypto sous l'identifiant `markets` ; la config existante des actions est migrée automatiquement vers ce module au premier démarrage.

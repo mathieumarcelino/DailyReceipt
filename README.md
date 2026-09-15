@@ -37,7 +37,8 @@ dailyreceipt/
     │   ├── header.module.ts
     │   ├── weather.module.ts
     │   ├── birthdays.module.ts
-    │   ├── markets.module.ts
+    │   ├── stocks.module.ts
+    │   ├── crypto.module.ts
     │   ├── sports.module.ts
     │   └── footer.module.ts
     ├── receipt/
@@ -84,7 +85,8 @@ Chaque module a sa propre fiche détaillée (rendu exact sur le ticket, champs d
 - [En-tête](docs/modules/header.md)
 - [Météo](docs/modules/weather.md)
 - [Anniversaires du jour](docs/modules/birthdays.md)
-- [Bourse / Crypto](docs/modules/markets.md)
+- [Bourse](docs/modules/stocks.md)
+- [Crypto](docs/modules/crypto.md)
 - [Sports](docs/modules/sports.md)
 - [Pied de page](docs/modules/footer.md)
 

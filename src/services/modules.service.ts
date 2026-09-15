@@ -12,8 +12,35 @@ export interface ModuleView {
   config: Record<string, unknown>;
 }
 
+/**
+ * Migration ponctuelle : l'ancien module unique "markets" (Bourse + Crypto) a été scindé en
+ * deux modules distincts "stocks" et "crypto". On répartit sa config existante par type plutôt
+ * que de perdre silencieusement le portefeuille déjà configuré par l'utilisateur.
+ */
+async function migrateLegacyMarketsModule(): Promise<void> {
+  const cfg = configStore.getConfig();
+  const legacy = cfg.modules.find((m) => m.id === "markets");
+  if (!legacy) return;
+
+  await configStore.updateConfig((draft) => {
+    const index = draft.modules.findIndex((m) => m.id === "markets");
+    if (index === -1) return;
+    const [removed] = draft.modules.splice(index, 1);
+    const assets = Array.isArray((removed.config as any)?.assets) ? ((removed.config as any).assets as any[]) : [];
+
+    const toAsset = (a: any) => ({ symbol: a.symbol, label: a.label });
+    const stockAssets = assets.filter((a) => a?.type === "stock").map(toAsset);
+    const cryptoAssets = assets.filter((a) => a?.type === "crypto").map(toAsset);
+
+    draft.modules.push({ id: "stocks", enabled: removed.enabled, order: removed.order, config: { assets: stockAssets } });
+    draft.modules.push({ id: "crypto", enabled: removed.enabled, order: removed.order + 0.5, config: { assets: cryptoAssets } });
+  });
+}
+
 /** Ajoute en base une entrée pour tout module du registre qui n'y figure pas encore. */
 async function ensureInstances(): Promise<void> {
+  await migrateLegacyMarketsModule();
+
   const cfg = configStore.getConfig();
   const existingIds = new Set(cfg.modules.map((m) => m.id));
   const missing = MODULE_REGISTRY.filter((m) => !existingIds.has(m.id));
