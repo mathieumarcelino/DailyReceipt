@@ -10,6 +10,7 @@ export type ConfigField =
   | { key: string; label: string; type: "select"; options: { value: string; label: string }[]; help?: string }
   | { key: string; label: string; type: "image"; help?: string }
   | { key: string; label: string; type: "team-search"; help?: string }
+  | { key: string; label: string; type: "stock-search"; help?: string }
   | {
       key: string;
       label: string;
@@ -66,8 +67,13 @@ export interface ReceiptContext {
   /** Ligne vide, répétée `count` fois. */
   spacer(count?: number): void;
 
-  /** Ligne avec un libellé à gauche et une valeur alignée à droite (ex: "Bitcoin ........... 45 000 €"). */
-  row(left: string, right: string, options?: { bold?: boolean }): void;
+  /**
+   * Ligne avec un libellé à gauche et une valeur alignée à droite (ex: "Bitcoin ........... 45 000 €").
+   * `rightColumnWidth` permet de réserver la même largeur de colonne "valeur" sur plusieurs lignes
+   * (ex: toutes les lignes d'une même liste) afin que les libellés tronqués s'arrêtent tous à la même
+   * colonne, plutôt que la coupure ne dépende de la longueur de la valeur de cette ligne uniquement.
+   */
+  row(left: string, right: string, options?: { bold?: boolean; rightColumnWidth?: number }): void;
 
   /**
    * Ajoute une ligne déjà mise en forme, telle quelle (tronquée à `width` si besoin) : contrairement

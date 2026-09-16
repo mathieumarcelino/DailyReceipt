@@ -9,6 +9,7 @@ function defaultFieldValue(field) {
     case "array":
       return [];
     case "team-search":
+    case "stock-search":
       return null;
     case "image":
     case "password":
@@ -44,6 +45,38 @@ function teamSearchState(item) {
 
     choose(item, candidate) {
       item.team = candidate;
+      this.results = [];
+    },
+  };
+}
+
+/** État Alpine local (un par ligne du tableau "actions suivies") pour le flux rechercher -> choisir. */
+function stockSearchState(item) {
+  return {
+    query: item.stock?.query || "",
+    loading: false,
+    results: [],
+    error: null,
+
+    async search() {
+      const q = this.query.trim();
+      if (!q) return;
+      this.loading = true;
+      this.error = null;
+      this.results = [];
+      try {
+        const data = await api(`/api/stocks/search?q=${encodeURIComponent(q)}`);
+        if (!data.results?.length) this.error = "Aucune action trouvée pour ce nom.";
+        else this.results = data.results;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    choose(item, candidate) {
+      item.stock = candidate;
       this.results = [];
     },
   };

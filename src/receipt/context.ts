@@ -64,9 +64,16 @@ export class ReceiptBuilder implements ReceiptContext {
     }
   }
 
-  row(left: string, right: string, options: { bold?: boolean } = {}): void {
+  row(left: string, right: string, options: { bold?: boolean; rightColumnWidth?: number } = {}): void {
     const bold = options.bold ?? false;
-    const maxLeftWidth = this.width - right.length - 1;
+    // Espace minimum entre le texte et la valeur, même quand le texte est tronqué.
+    const minGap = 2;
+    // rightColumnWidth permet d'aligner la coupure des libellés sur plusieurs lignes (ex: une liste
+    // de valeurs) en réservant la largeur de la valeur la plus longue du groupe, pas seulement
+    // celle de cette ligne : sans ça, une ligne à valeur courte tronquerait moins son libellé qu'une
+    // ligne à valeur longue, donnant une coupure en escalier au lieu d'une colonne bien alignée.
+    const reservedRightWidth = Math.max(options.rightColumnWidth ?? 0, right.length);
+    const maxLeftWidth = this.width - reservedRightWidth - minGap;
 
     if (maxLeftWidth < 1) {
       // Pas assez de place pour tenir sur une ligne : on retombe sur deux lignes.
@@ -80,7 +87,7 @@ export class ReceiptBuilder implements ReceiptContext {
       leftText = maxLeftWidth <= 1 ? leftText.slice(0, maxLeftWidth) : leftText.slice(0, maxLeftWidth - 1) + "…";
     }
 
-    const gap = Math.max(1, this.width - leftText.length - right.length);
+    const gap = Math.max(minGap, this.width - leftText.length - right.length);
     const line = (leftText + " ".repeat(gap) + right).slice(0, this.width);
     this.pushLine(line, "left", bold, false, "normal");
   }

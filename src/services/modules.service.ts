@@ -29,9 +29,12 @@ async function migrateLegacyMarketsModule(): Promise<void> {
     const [removed] = draft.modules.splice(index, 1);
     const assets = Array.isArray((removed.config as any)?.assets) ? ((removed.config as any).assets as any[]) : [];
 
-    const toAsset = (a: any) => ({ symbol: a.symbol, label: a.label });
-    const stockAssets = assets.filter((a) => a?.type === "stock").map(toAsset);
-    const cryptoAssets = assets.filter((a) => a?.type === "crypto").map(toAsset);
+    // Le module Bourse utilise depuis un widget de recherche un objet "stock" (symbole + libellé +
+    // marché) plutôt qu'un simple symbole texte : on reconstitue cet objet à partir des données migrées.
+    const toStockAsset = (a: any) => ({ stock: { query: a.symbol, symbol: a.symbol, name: a.label || a.symbol, exchange: "" }, label: a.label });
+    const toCryptoAsset = (a: any) => ({ symbol: a.symbol, label: a.label });
+    const stockAssets = assets.filter((a) => a?.type === "stock").map(toStockAsset);
+    const cryptoAssets = assets.filter((a) => a?.type === "crypto").map(toCryptoAsset);
 
     draft.modules.push({ id: "stocks", enabled: removed.enabled, order: removed.order, config: { assets: stockAssets } });
     draft.modules.push({ id: "crypto", enabled: removed.enabled, order: removed.order + 0.5, config: { assets: cryptoAssets } });

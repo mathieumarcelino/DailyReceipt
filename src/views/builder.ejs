@@ -127,7 +127,7 @@
                         <div class="flex items-end gap-2 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
                             <template x-for="subField in field.itemSchema" :key="subField.key">
-                              <div :class="subField.type === 'team-search' ? 'sm:col-span-3' : ''">
+                              <div :class="(subField.type === 'team-search' || subField.type === 'stock-search') ? 'sm:col-span-3' : ''">
                                 <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1" x-text="subField.label"></label>
 
                                 <template x-if="subField.type === 'team-search'">
@@ -170,6 +170,56 @@
                                               <div class="flex-1 min-w-0 text-sm">
                                                 <span x-text="candidate.name"></span>
                                                 <span class="text-xs text-gray-500 dark:text-gray-400" x-text="' (' + candidate.sport + ' — ' + candidate.league + ')'"></span>
+                                              </div>
+                                              <span class="text-xs text-accent-600 shrink-0">Choisir</span>
+                                            </button>
+                                          </template>
+                                        </div>
+
+                                        <p class="text-xs text-red-600 dark:text-red-400 mt-1" x-show="error" x-text="error"></p>
+                                      </div>
+                                    </template>
+                                  </div>
+                                </template>
+
+                                <template x-if="subField.type === 'stock-search'">
+                                  <div x-data="stockSearchState(item)">
+                                    <template x-if="item[subField.key]">
+                                      <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                                        <div class="flex-1 min-w-0">
+                                          <div class="text-sm font-medium truncate" x-text="item[subField.key].name"></div>
+                                          <div class="text-xs text-gray-500 dark:text-gray-400 truncate" x-text="`${item[subField.key].symbol} — ${item[subField.key].exchange}`"></div>
+                                        </div>
+                                        <button type="button" class="text-xs text-accent-600 hover:underline shrink-0" @click="item[subField.key] = null; query = '';">Changer</button>
+                                      </div>
+                                    </template>
+
+                                    <template x-if="!item[subField.key]">
+                                      <div>
+                                        <div class="flex gap-2">
+                                          <input
+                                            type="text"
+                                            class="field-input"
+                                            x-model="query"
+                                            placeholder="Nom ou symbole (ex: Apple, AAPL)"
+                                            @keydown.enter.prevent="search()"
+                                          />
+                                          <button type="button" class="btn-secondary !px-3 text-xs shrink-0" :disabled="loading || !query.trim()" @click="search()">
+                                            <span x-show="!loading">Rechercher</span>
+                                            <span x-show="loading" x-cloak>...</span>
+                                          </button>
+                                        </div>
+
+                                        <div class="mt-2 space-y-1" x-show="results.length" x-cloak>
+                                          <template x-for="candidate in results" :key="candidate.symbol">
+                                            <button
+                                              type="button"
+                                              class="w-full flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-left"
+                                              @click="choose(item, candidate)"
+                                            >
+                                              <div class="flex-1 min-w-0 text-sm">
+                                                <span x-text="candidate.name"></span>
+                                                <span class="text-xs text-gray-500 dark:text-gray-400" x-text="' (' + candidate.symbol + ' — ' + candidate.exchange + ')'"></span>
                                               </div>
                                               <span class="text-xs text-accent-600 shrink-0">Choisir</span>
                                             </button>
