@@ -1,8 +1,17 @@
 import type { ReceiptModule } from "./types";
 
-interface CryptoAsset {
+export interface CryptoCandidate {
+  query: string;
+  id: string;
+  name: string;
   symbol: string;
-  label: string;
+  rank: number | null;
+}
+
+interface CryptoAsset {
+  crypto: CryptoCandidate | null;
+  /** Surcharge optionnelle du libellé récupéré automatiquement via l'API. */
+  label?: string;
 }
 
 interface CryptoConfig {
@@ -33,20 +42,26 @@ const cryptoModule: ReceiptModule<CryptoConfig, CryptoData> = {
       type: "array",
       itemLabel: "Crypto",
       itemSchema: [
-        { key: "symbol", label: "Symbole", type: "text", placeholder: "bitcoin (identifiant CoinGecko)" },
-        { key: "label", label: "Libellé affiché", type: "text", placeholder: "Bitcoin (BTC)" },
+        { key: "crypto", label: "Crypto", type: "crypto-search" },
+        {
+          key: "label",
+          label: "Libellé affiché",
+          type: "text",
+          placeholder: "Bitcoin (BTC)",
+          help: "Laissez vide pour utiliser le nom récupéré automatiquement depuis CoinGecko.",
+        },
       ],
     },
   ],
   defaultConfig: {
     assets: [
-      { symbol: "bitcoin", label: "Bitcoin (BTC)" },
-      { symbol: "ethereum", label: "Ethereum (ETH)" },
+      { crypto: { query: "bitcoin", id: "bitcoin", name: "Bitcoin", symbol: "BTC", rank: 1 } },
+      { crypto: { query: "ethereum", id: "ethereum", name: "Ethereum", symbol: "ETH", rank: 2 } },
     ],
   },
 
   async fetchData(config) {
-    const assets = (config.assets ?? []).filter((a) => a.symbol?.trim());
+    const assets = (config.assets ?? []).filter((a): a is CryptoAsset & { crypto: CryptoCandidate } => Boolean(a.crypto?.id));
     const quotes = await fetchCryptoQuotes(assets);
     return { quotes };
   },
@@ -56,20 +71,44 @@ const cryptoModule: ReceiptModule<CryptoConfig, CryptoData> = {
     if (data.quotes.length === 0) {
       ctx.text("Aucune valeur configurée.");
     }
-    for (const q of data.quotes) {
-      if (q.price == null) {
-        ctx.row(q.label, "N/A");
-        continue;
-      }
-      const sign = q.changePct != null && q.changePct >= 0 ? "+" : "";
-      const change = q.changePct != null ? ` (${sign}${q.changePct.toFixed(1)}%)` : "";
-      ctx.row(q.label, `${formatPrice(q.price)} ${q.currency}${change}`);
+    const rows = data.quotes.map((q) => ({ label: q.label, value: formatQuoteValue(q) }));
+    // Largeur réservée à la colonne valeur commune à toutes les lignes, pour que les libellés
+    // tronqués s'arrêtent tous à la même colonne plutôt qu'en escalier.
+    const rightColumnWidth = Math.max(0, ...rows.map((r) => r.value.length));
+    for (const row of rows) {
+      ctx.row(row.label, row.value, { rightColumnWidth });
     }
   },
 };
 
-function errorQuote(asset: CryptoAsset): Quote {
-  return { label: asset.label ?? asset.symbol, price: null, currency: "", changePct: null, error: "non disponible" };
+/** Recherche de cryptos par nom ou symbole (utilisé par fetchData ET par la route de recherche du Constructeur). */
+export async function searchCryptos(query: string): Promise<CryptoCandidate[]> {
+  const url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`CoinGecko a répondu ${res.status}`);
+
+  const json: any = await res.json();
+  const coins: any[] = Array.isArray(json?.coins) ? json.coins : [];
+
+  return coins.slice(0, 8).map(
+    (c): CryptoCandidate => ({
+      query,
+      id: c.id,
+      name: c.name,
+      symbol: typeof c.symbol === "string" ? c.symbol.toUpperCase() : "",
+      rank: typeof c.market_cap_rank === "number" ? c.market_cap_rank : null,
+    }),
+  );
+}
+
+function errorQuote(asset: CryptoAsset & { crypto: CryptoCandidate }): Quote {
+  return {
+    label: asset.label?.trim() || asset.crypto.name || asset.crypto.symbol,
+    price: null,
+    currency: "",
+    changePct: null,
+    error: "non disponible",
+  };
 }
 
 /**
@@ -85,9 +124,17 @@ function formatPrice(value: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
-async function fetchCryptoQuotes(assets: CryptoAsset[]): Promise<Quote[]> {
+/** Texte de la colonne valeur pour une cotation (ex: "45 000 € (-0.6%)" ou "N/A"). */
+function formatQuoteValue(q: Quote): string {
+  if (q.price == null) return "N/A";
+  const sign = q.changePct != null && q.changePct >= 0 ? "+" : "";
+  const change = q.changePct != null ? ` (${sign}${q.changePct.toFixed(1)}%)` : "";
+  return `${formatPrice(q.price)} ${q.currency}${change}`;
+}
+
+async function fetchCryptoQuotes(assets: (CryptoAsset & { crypto: CryptoCandidate })[]): Promise<Quote[]> {
   if (assets.length === 0) return [];
-  const ids = assets.map((a) => a.symbol.trim()).join(",");
+  const ids = assets.map((a) => a.crypto.id.trim()).join(",");
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=eur&include_24hr_change=true`;
 
   try {
@@ -96,10 +143,10 @@ async function fetchCryptoQuotes(assets: CryptoAsset[]): Promise<Quote[]> {
     const json: any = await res.json();
 
     return assets.map((asset) => {
-      const entry = json[asset.symbol.trim()];
+      const entry = json[asset.crypto.id.trim()];
       if (!entry) return errorQuote(asset);
       return {
-        label: asset.label?.trim() || asset.symbol,
+        label: asset.label?.trim() || asset.crypto.name || asset.crypto.symbol,
         price: entry.eur ?? null,
         currency: "€",
         changePct: entry.eur_24h_change ?? null,

@@ -10,6 +10,7 @@ function defaultFieldValue(field) {
       return [];
     case "team-search":
     case "stock-search":
+    case "crypto-search":
       return null;
     case "image":
     case "password":
@@ -77,6 +78,38 @@ function stockSearchState(item) {
 
     choose(item, candidate) {
       item.stock = candidate;
+      this.results = [];
+    },
+  };
+}
+
+/** État Alpine local (un par ligne du tableau "cryptos suivies") pour le flux rechercher -> choisir. */
+function cryptoSearchState(item) {
+  return {
+    query: item.crypto?.query || "",
+    loading: false,
+    results: [],
+    error: null,
+
+    async search() {
+      const q = this.query.trim();
+      if (!q) return;
+      this.loading = true;
+      this.error = null;
+      this.results = [];
+      try {
+        const data = await api(`/api/crypto/search?q=${encodeURIComponent(q)}`);
+        if (!data.results?.length) this.error = "Aucune crypto trouvée pour ce nom.";
+        else this.results = data.results;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    choose(item, candidate) {
+      item.crypto = candidate;
       this.results = [];
     },
   };

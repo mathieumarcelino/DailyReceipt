@@ -11,6 +11,7 @@ import modulesRoutes from "./routes/modules.routes";
 import printRoutes from "./routes/print.routes";
 import sportsRoutes from "./routes/sports.routes";
 import stocksRoutes from "./routes/stocks.routes";
+import cryptoRoutes from "./routes/crypto.routes";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -35,6 +36,7 @@ async function main() {
   await app.register(printRoutes);
   await app.register(sportsRoutes);
   await app.register(stocksRoutes);
+  await app.register(cryptoRoutes);
 
   app.setErrorHandler((err: FastifyError, _req, reply) => {
     app.log.error(err);

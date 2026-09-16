@@ -11,6 +11,7 @@ export type ConfigField =
   | { key: string; label: string; type: "image"; help?: string }
   | { key: string; label: string; type: "team-search"; help?: string }
   | { key: string; label: string; type: "stock-search"; help?: string }
+  | { key: string; label: string; type: "crypto-search"; help?: string }
   | {
       key: string;
       label: string;

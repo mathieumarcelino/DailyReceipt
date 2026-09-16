@@ -29,10 +29,11 @@ async function migrateLegacyMarketsModule(): Promise<void> {
     const [removed] = draft.modules.splice(index, 1);
     const assets = Array.isArray((removed.config as any)?.assets) ? ((removed.config as any).assets as any[]) : [];
 
-    // Le module Bourse utilise depuis un widget de recherche un objet "stock" (symbole + libellé +
-    // marché) plutôt qu'un simple symbole texte : on reconstitue cet objet à partir des données migrées.
+    // Les modules Bourse et Crypto utilisent depuis un widget de recherche un objet candidat
+    // (symbole + libellé + marché/rang) plutôt qu'un simple symbole texte : on reconstitue cet
+    // objet à partir des données migrées.
     const toStockAsset = (a: any) => ({ stock: { query: a.symbol, symbol: a.symbol, name: a.label || a.symbol, exchange: "" }, label: a.label });
-    const toCryptoAsset = (a: any) => ({ symbol: a.symbol, label: a.label });
+    const toCryptoAsset = (a: any) => ({ crypto: { query: a.symbol, id: a.symbol, name: a.label || a.symbol, symbol: "", rank: null }, label: a.label });
     const stockAssets = assets.filter((a) => a?.type === "stock").map(toStockAsset);
     const cryptoAssets = assets.filter((a) => a?.type === "crypto").map(toCryptoAsset);
 
@@ -41,9 +42,43 @@ async function migrateLegacyMarketsModule(): Promise<void> {
   });
 }
 
+/**
+ * Migration ponctuelle : les modules Bourse et Crypto ont remplacé leur champ texte "symbol" par un
+ * widget de recherche produisant un objet candidat ("stock"/"crypto" avec nom, marché/rang...). On
+ * convertit les anciennes entrées à plat plutôt que de les faire disparaître silencieusement du ticket.
+ */
+async function migrateLegacySearchableAssets(): Promise<void> {
+  const isLegacyFlatAsset = (a: any, key: string) => a && typeof a === "object" && typeof a.symbol === "string" && !(key in a);
+
+  const cfg = configStore.getConfig();
+  const stocksAssets = ((cfg.modules.find((m) => m.id === "stocks")?.config as any)?.assets ?? []) as any[];
+  const cryptoAssets = ((cfg.modules.find((m) => m.id === "crypto")?.config as any)?.assets ?? []) as any[];
+  const needsMigration = stocksAssets.some((a) => isLegacyFlatAsset(a, "stock")) || cryptoAssets.some((a) => isLegacyFlatAsset(a, "crypto"));
+  if (!needsMigration) return;
+
+  await configStore.updateConfig((draft) => {
+    const stocksInst = draft.modules.find((m) => m.id === "stocks");
+    if (stocksInst) {
+      const assets = Array.isArray((stocksInst.config as any).assets) ? ((stocksInst.config as any).assets as any[]) : [];
+      (stocksInst.config as any).assets = assets.map((a) =>
+        isLegacyFlatAsset(a, "stock") ? { stock: { query: a.symbol, symbol: a.symbol, name: a.label || a.symbol, exchange: "" }, label: a.label } : a,
+      );
+    }
+
+    const cryptoInst = draft.modules.find((m) => m.id === "crypto");
+    if (cryptoInst) {
+      const assets = Array.isArray((cryptoInst.config as any).assets) ? ((cryptoInst.config as any).assets as any[]) : [];
+      (cryptoInst.config as any).assets = assets.map((a) =>
+        isLegacyFlatAsset(a, "crypto") ? { crypto: { query: a.symbol, id: a.symbol, name: a.label || a.symbol, symbol: "", rank: null }, label: a.label } : a,
+      );
+    }
+  });
+}
+
 /** Ajoute en base une entrée pour tout module du registre qui n'y figure pas encore. */
 async function ensureInstances(): Promise<void> {
   await migrateLegacyMarketsModule();
+  await migrateLegacySearchableAssets();
 
   const cfg = configStore.getConfig();
   const existingIds = new Set(cfg.modules.map((m) => m.id));
