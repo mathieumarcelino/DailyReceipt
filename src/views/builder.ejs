@@ -1,5 +1,7 @@
 <%- include('partials/head', { active }) %>
 
+<link rel="stylesheet" href="/public/vendor/leaflet/leaflet.css" />
+<script src="/public/vendor/leaflet/leaflet.js"></script>
 <script src="/public/js/builder.js"></script>
 
 <div x-data="builderPage()" x-init="init()">
@@ -112,6 +114,17 @@
                       </div>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG uniquement, 500 Ko max. Redimensionné et tramé en noir/blanc automatiquement pour l'impression.</p>
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'coordinates' && expandedId === mod.id">
+                  <div x-data="coordinatesPickerState(mod, field)">
+                    <label class="field-label" x-text="field.label"></label>
+                    <div x-ref="mapEl" class="rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700" style="height: 220px"></div>
+                    <div class="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <span>Latitude : <span class="font-mono" x-text="mod.config[field.latKey].toFixed(4)"></span></span>
+                      <span>Longitude : <span class="font-mono" x-text="mod.config[field.lngKey].toFixed(4)"></span></span>
+                    </div>
                   </div>
                 </template>
 

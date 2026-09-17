@@ -15,6 +15,17 @@ export type ConfigField =
   | {
       key: string;
       label: string;
+      type: "coordinates";
+      /** Clés de configuration mises à jour par le repère sur la carte (ex: "latitude"/"longitude"). */
+      latKey: string;
+      lngKey: string;
+      /** Si défini, cette clé est auto-remplie via géocodage inverse (OSM/Nominatim) à chaque déplacement du repère, sans jamais écraser une saisie manuelle ultérieure (le champ reste éditable). */
+      cityKey?: string;
+      help?: string;
+    }
+  | {
+      key: string;
+      label: string;
       type: "array";
       itemLabel: string;
       /** Champs édités pour chaque élément du tableau (une seule profondeur, pas de tableau imbriqué). */

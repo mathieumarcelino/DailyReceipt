@@ -7,7 +7,7 @@ Conçue pour tourner en Docker sur un NAS (TrueNAS SCALE, Synology, Unraid...).
 ## Stack technique
 
 - **Backend** : Node.js + TypeScript + [Fastify](https://fastify.dev)
-- **Frontend** : rendu serveur (EJS) + [Alpine.js](https://alpinejs.dev) (vendorisé, aucun CDN externe requis à l'exécution) + Tailwind CSS (compilé, pas de CDN)
+- **Frontend** : rendu serveur (EJS) + [Alpine.js](https://alpinejs.dev) + [Leaflet](https://leafletjs.com) (tous deux vendorisés, aucun CDN externe requis à l'exécution) + Tailwind CSS (compilé, pas de CDN) — seules les tuiles de carte OpenStreetMap (widget de sélection de coordonnées) sont chargées depuis internet, uniquement à l'usage dans le Constructeur
 - **Persistance** : simple fichier JSON (`/data/config.json`), monté en volume Docker
 - **Ordonnancement** : `node-cron`
 - **Impression** : moteur ESC/POS maison (aucune dépendance native), envoi en raw TCP sur le port 9100
@@ -22,7 +22,7 @@ dailyreceipt/
 ├── docker-compose.yml
 ├── package.json / tsconfig.json / tailwind.config.js
 ├── scripts/
-│   ├── copy-vendor.js      # copie Alpine.js dans src/public (postinstall)
+│   ├── copy-vendor.js      # copie Alpine.js et Leaflet dans src/public (postinstall)
 │   └── copy-assets.js      # copie views + public dans dist/ (build)
 ├── docs/modules/           # une fiche détaillée par module (voir plus bas)
 ├── data/                   # config.json (persisté via volume Docker)
@@ -76,7 +76,7 @@ interface ReceiptModule<TConfig, TData> {
 
 **Pour ajouter un module** : créer `src/modules/mon-module.module.ts` implémentant `ReceiptModule`, puis l'ajouter au tableau `MODULE_REGISTRY` dans [src/modules/registry.ts](src/modules/registry.ts). Rien d'autre à modifier : l'UI (toggle, ordre, formulaire de config) et l'aperçu s'adaptent automatiquement.
 
-Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires, les valeurs boursières et les équipes suivies) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel, via la primitive `ctx.image()`. Le type `{ type: 'team-search' }` est un widget dédié (rechercher → choisir dans une liste de résultats) plutôt qu'un simple champ texte — utilisé par le module Sports, voir sa documentation pour le détail.
+Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires, les actions/cryptos suivies et les équipes suivies) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel, via la primitive `ctx.image()`. Les types `{ type: 'team-search' }`, `{ type: 'stock-search' }` et `{ type: 'crypto-search' }` sont des widgets dédiés (rechercher → choisir dans une liste de résultats) plutôt qu'un simple champ texte — utilisés respectivement par les modules Sports, Bourse et Crypto, voir leur documentation pour le détail. Le type `{ type: 'coordinates', latKey, lngKey, cityKey? }` affiche une petite carte OpenStreetMap (Leaflet) pour choisir une position GPS par clic/glisser-déposer plutôt qu'en tapant manuellement deux champs numériques ; si `cityKey` est fourni, ce champ est aussi pré-rempli par géocodage inverse (Nominatim) à chaque déplacement du repère, sans jamais écraser une saisie manuelle ultérieure — utilisé par le module Météo.
 
 ### Documentation par module
 

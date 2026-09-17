@@ -115,6 +115,57 @@ function cryptoSearchState(item) {
   };
 }
 
+/** État Alpine local pour le champ "coordinates" : petite carte Leaflet + repère déplaçable. */
+function coordinatesPickerState(mod, field) {
+  return {
+    map: null,
+    marker: null,
+
+    init() {
+      const lat = mod.config[field.latKey] ?? 0;
+      const lng = mod.config[field.lngKey] ?? 0;
+
+      this.map = L.map(this.$refs.mapEl, { attributionControl: false }).setView([lat, lng], 10);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "© OpenStreetMap",
+      }).addTo(this.map);
+
+      this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+      this.marker.on("dragend", () => this.applyPosition(this.marker.getLatLng()));
+      this.map.on("click", (e) => {
+        this.marker.setLatLng(e.latlng);
+        this.applyPosition(e.latlng);
+      });
+
+      // La carte peut s'initialiser avant que le panneau (repliable) n'ait sa taille finale.
+      setTimeout(() => this.map.invalidateSize(), 0);
+    },
+
+    applyPosition(latlng) {
+      mod.config[field.latKey] = Math.round(latlng.lat * 10000) / 10000;
+      mod.config[field.lngKey] = Math.round(latlng.lng * 10000) / 10000;
+
+      if (field.cityKey) this.fillCityName(mod.config[field.latKey], mod.config[field.lngKey]);
+    },
+
+    async fillCityName(lat, lng) {
+      try {
+        const data = await api(`/api/weather/reverse-geocode?lat=${lat}&lng=${lng}`);
+        if (data.city) mod.config[field.cityKey] = data.city;
+      } catch {
+        // Géocodage indisponible : le champ ville reste tel quel, toujours modifiable à la main.
+      }
+    },
+
+    // Le champ est démonté (template x-if) à chaque repli du panneau : on détruit la carte
+    // pour ne pas laisser trainer ses écouteurs d'évènements.
+    destroy() {
+      if (this.map) this.map.remove();
+    },
+  };
+}
+
 const MAX_IMAGE_BYTES = 500 * 1024;
 
 function builderPage() {
