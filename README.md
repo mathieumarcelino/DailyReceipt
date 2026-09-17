@@ -26,6 +26,7 @@ dailyreceipt/
 │   └── copy-assets.js      # copie views + public dans dist/ (build)
 ├── docs/modules/           # une fiche détaillée par module (voir plus bas)
 ├── data/                   # config.json (persisté via volume Docker)
+├── test/                   # tests (node:test), miroir de la structure de src/
 └── src/
     ├── server.ts           # bootstrap Fastify
     ├── config/

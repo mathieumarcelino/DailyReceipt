@@ -17,13 +17,14 @@ Choix architecturaux volontairement minimalistes, à respecter pour toute évolu
 ```bash
 npm install          # installe les dépendances + vendorise Alpine.js et Leaflet dans src/public (postinstall)
 npm run dev           # serveur (tsx watch) + Tailwind (watch) en parallèle, http://localhost:3000
-npm run typecheck     # tsc --noEmit — seule vérification automatisée du projet (pas de tests, pas de lint)
-npm run build         # build:css (Tailwind) + build:server (tsc) + copy:assets (views/public -> dist/)
+npm test              # test runner natif de Node (node:test) via tsx, fichiers *.test.ts dans test/ (miroir de src/)
+npm run typecheck     # tsc --noEmit via tsconfig.test.json (couvre src/ ET test/)
+npm run build         # build:css (Tailwind) + build:server (tsc via tsconfig.json, ne voit que src/) + copy:assets
 npm start             # lance dist/server.js (après build)
 docker compose up -d --build   # build + lancement en conteneur
 ```
 
-Il n'y a **ni suite de tests ni linter** configurés dans ce projet — `npm run typecheck` est la seule vérification automatisée à faire passer avant de livrer un changement.
+Pas de linter configuré. Les tests utilisent `node:test`/`node:assert` (zéro dépendance ajoutée, cf. philosophie minimaliste) plutôt que Jest/Vitest, dans un dossier `test/` séparé qui reflète la structure de `src/` (ex: `src/receipt/context.ts` → `test/receipt/context.test.ts`, imports relatifs du type `../../src/...`) — pas de config supplémentaire à maintenir, `npm test` ramasse tout via `find`. Pour lancer un seul fichier : `npx tsx --test test/receipt/context.test.ts`. Priorité de test : la logique **pure et déterministe** (`ReceiptBuilder`, `commands.ts`, les helpers de `src/lib/`) et le parsing des réponses d'API externes via des fixtures JSON + mock de `fetch` (`t.mock.method(globalThis, "fetch", ...)`, voir `weather.module.test.ts`) — pas de tests d'intégration bout-en-bout contre les vraies API tierces.
 
 Variables d'environnement : `PORT` (3000), `HOST` (0.0.0.0), `CONFIG_PATH` (`/data/config.json`, avec repli automatique sur `./data/config.json` si `/data` n'est pas accessible en écriture et que la variable n'a pas été fixée explicitement — voir `src/config/store.ts`), `TZ` (fuseau pour le cron et l'affichage des heures).
 
