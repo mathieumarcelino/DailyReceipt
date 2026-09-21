@@ -97,6 +97,21 @@
                   </div>
                 </template>
 
+                <template x-if="field.type === 'action'">
+                  <div x-data="{ running: false }">
+                    <label class="field-label" x-text="field.label"></label>
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      :disabled="running"
+                      @click="running = true; runModuleAction(field.endpoint, field.method || 'POST').finally(() => running = false)"
+                    >
+                      <span x-show="!running" x-text="field.buttonLabel"></span>
+                      <span x-show="running" x-cloak>...</span>
+                    </button>
+                  </div>
+                </template>
+
                 <template x-if="field.type === 'image'">
                   <div>
                     <label class="field-label" x-text="field.label"></label>
@@ -124,6 +139,51 @@
                     <div class="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
                       <span>Latitude : <span class="font-mono" x-text="mod.config[field.latKey].toFixed(4)"></span></span>
                       <span>Longitude : <span class="font-mono" x-text="mod.config[field.lngKey].toFixed(4)"></span></span>
+                    </div>
+                  </div>
+                </template>
+
+                <template x-if="field.type === 'news-topics'">
+                  <div>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="field-label mb-0" x-text="field.label"></span>
+                      <button type="button" class="btn-secondary !py-1 !px-2 text-xs" @click="addNewsTopic(mod, field)">+ Ajouter un sujet</button>
+                    </div>
+
+                    <div class="space-y-3">
+                      <template x-for="(topic, topicIdx) in (mod.config[field.key] || [])" :key="topicIdx">
+                        <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <div class="flex items-end gap-2 mb-2">
+                            <div class="flex-1">
+                              <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Sujet affiché</label>
+                              <input type="text" class="field-input" x-model="topic.label" placeholder="Tech" />
+                            </div>
+                            <button type="button" class="btn-icon" @click="removeNewsTopic(mod, field, topicIdx)" title="Supprimer ce sujet">✕</button>
+                          </div>
+
+                          <div class="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                            <template x-for="(feed, feedIdx) in topic.feeds" :key="feedIdx">
+                              <div class="flex items-end gap-2">
+                                <div class="flex-1">
+                                  <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1" x-show="feedIdx === 0">URL du flux RSS</label>
+                                  <input type="text" class="field-input" x-model="feed.url" placeholder="https://exemple.com/rss.xml" />
+                                </div>
+                                <div class="w-28">
+                                  <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1" x-show="feedIdx === 0">Max articles</label>
+                                  <input type="number" class="field-input" x-model.number="feed.maxArticles" min="1" max="30" />
+                                </div>
+                                <button type="button" class="btn-icon" @click="removeNewsFeed(mod, field, topicIdx, feedIdx)" title="Supprimer ce flux">✕</button>
+                              </div>
+                            </template>
+
+                            <button type="button" class="btn-secondary !py-1 !px-2 text-xs" @click="addNewsFeed(mod, field, topicIdx)">
+                              + Ajouter un flux à ce sujet
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+
+                      <p class="text-xs text-gray-400" x-show="!(mod.config[field.key] || []).length">Aucun sujet. Cliquez sur "+ Ajouter un sujet".</p>
                     </div>
                   </div>
                 </template>

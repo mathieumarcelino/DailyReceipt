@@ -30,8 +30,16 @@ export interface LastRunState {
   message?: string;
 }
 
+export interface NewsCacheEntry {
+  summary: string;
+  /** ISO8601, horodatage de génération : le cache expire au changement de jour local. */
+  cachedAt: string;
+}
+
 export interface AppState {
   lastRun?: LastRunState;
+  /** Résumés IA du module Actualités, mis en cache par URL de flux jusqu'au lendemain. */
+  newsCache?: Record<string, NewsCacheEntry>;
 }
 
 export interface AppConfig {

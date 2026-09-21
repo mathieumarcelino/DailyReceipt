@@ -11,6 +11,7 @@ Conçue pour tourner en Docker sur un NAS (TrueNAS SCALE, Synology, Unraid...).
 - **Persistance** : simple fichier JSON (`/data/config.json`), monté en volume Docker
 - **Ordonnancement** : `node-cron`
 - **Impression** : moteur ESC/POS maison (aucune dépendance native), envoi en raw TCP sur le port 9100
+- **Flux RSS/Atom** : `fast-xml-parser` (module Actualités) ; résumé des articles via l'API [Google Gemini](https://ai.google.dev/gemini-api/docs/pricing) (clé API requise, offre gratuite au moment de l'écriture)
 
 Choix volontairement minimaliste : pas de base de données, pas de build frontend lourd (React/Vite), pas de dépendances natives (donc portable sur NAS ARM ou x86 sans souci de compilation croisée).
 
@@ -41,6 +42,7 @@ dailyreceipt/
     │   ├── stocks.module.ts
     │   ├── crypto.module.ts
     │   ├── sports.module.ts
+    │   ├── news.module.ts
     │   └── footer.module.ts
     ├── receipt/
     │   └── context.ts       # ReceiptBuilder : word-wrap + mise en page (partagé ESC/POS + aperçu web)
@@ -77,7 +79,7 @@ interface ReceiptModule<TConfig, TData> {
 
 **Pour ajouter un module** : créer `src/modules/mon-module.module.ts` implémentant `ReceiptModule`, puis l'ajouter au tableau `MODULE_REGISTRY` dans [src/modules/registry.ts](src/modules/registry.ts). Rien d'autre à modifier : l'UI (toggle, ordre, formulaire de config) et l'aperçu s'adaptent automatiquement.
 
-Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires, les actions/cryptos suivies et les équipes suivies) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel, via la primitive `ctx.image()`. Les types `{ type: 'team-search' }`, `{ type: 'stock-search' }` et `{ type: 'crypto-search' }` sont des widgets dédiés (rechercher → choisir dans une liste de résultats) plutôt qu'un simple champ texte — utilisés respectivement par les modules Sports, Bourse et Crypto, voir leur documentation pour le détail. Le type `{ type: 'coordinates', latKey, lngKey, cityKey? }` affiche une petite carte OpenStreetMap (Leaflet) pour choisir une position GPS par clic/glisser-déposer plutôt qu'en tapant manuellement deux champs numériques ; si `cityKey` est fourni, ce champ est aussi pré-rempli par géocodage inverse (Nominatim) à chaque déplacement du repère, sans jamais écraser une saisie manuelle ultérieure — utilisé par le module Météo.
+Le type de champ `configSchema: { type: 'array', itemSchema: [...] }` permet de gérer des listes (utilisé par les anniversaires, les actions/cryptos suivies et les équipes suivies) via un formulaire générique, sans code UI dédié. Le type `{ type: 'image' }` permet l'upload d'un PNG (stocké en data URL directement dans la config du module) — utilisé par le module En-tête pour un logo optionnel, via la primitive `ctx.image()`. Les types `{ type: 'team-search' }`, `{ type: 'stock-search' }` et `{ type: 'crypto-search' }` sont des widgets dédiés (rechercher → choisir dans une liste de résultats) plutôt qu'un simple champ texte — utilisés respectivement par les modules Sports, Bourse et Crypto, voir leur documentation pour le détail. Le type `{ type: 'coordinates', latKey, lngKey, cityKey? }` affiche une petite carte OpenStreetMap (Leaflet) pour choisir une position GPS par clic/glisser-déposer plutôt qu'en tapant manuellement deux champs numériques ; si `cityKey` est fourni, ce champ est aussi pré-rempli par géocodage inverse (Nominatim) à chaque déplacement du repère, sans jamais écraser une saisie manuelle ultérieure — utilisé par le module Météo. Le type `{ type: 'action', buttonLabel, endpoint, method? }` affiche un simple bouton qui déclenche un appel backend sans donnée de formulaire — utilisé par le module Actualités pour vider manuellement le cache des résumés. Le type `{ type: 'news-topics' }` affiche une liste de sujets contenant chacun plusieurs flux RSS (label saisi une seule fois par sujet, pas par flux) — un niveau d'imbrication volontairement absent du type `array` générique, d'où ce champ dédié au module Actualités.
 
 ### Documentation par module
 
@@ -89,6 +91,7 @@ Chaque module a sa propre fiche détaillée (rendu exact sur le ticket, champs d
 - [Bourse](docs/modules/stocks.md)
 - [Crypto](docs/modules/crypto.md)
 - [Sports](docs/modules/sports.md)
+- [Actualités](docs/modules/news.md)
 - [Pied de page](docs/modules/footer.md)
 
 ## Lancer en local
@@ -136,6 +139,7 @@ Pour la déployer sur **TrueNAS SCALE** : le fichier `docker-compose.yml` fourni
 
 ## Notes techniques
 
-- Aucune clé API requise : météo via [Open-Meteo](https://open-meteo.com), crypto via [CoinGecko](https://www.coingecko.com), actions via l'endpoint public Yahoo Finance.
+- Seul le module Actualités nécessite une clé API (gratuite, [Google AI Studio](https://aistudio.google.com)) pour les résumés par IA ; tous les autres modules fonctionnent sans clé : météo via [Open-Meteo](https://open-meteo.com), crypto via [CoinGecko](https://www.coingecko.com), actions via l'endpoint public Yahoo Finance, sports via l'API publique ESPN, géocodage via [Nominatim](https://nominatim.org).
+- **Usage personnel uniquement** : ce projet est conçu pour un usage personnel et non commercial. Les endpoints Yahoo Finance et ESPN sont publics mais non officiels/non documentés (ils peuvent changer ou disparaître sans préavis), et les flux RSS ainsi que Nominatim imposent leurs propres conditions d'utilisation, à respecter par chaque utilisateur.
 - Si un module échoue à récupérer ses données (API indisponible), le ticket continue d'être imprimé avec un message d'indisponibilité pour ce seul module.
 - Les caractères imprimés sont encodés selon le profil choisi (CP437/CP858/CP1252) via `iconv-lite` ; en cas de caractère non supporté par le profil, l'imprimante affichera typiquement un `?` (aucune interruption de l'impression).

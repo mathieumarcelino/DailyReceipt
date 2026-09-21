@@ -75,10 +75,41 @@ async function migrateLegacySearchableAssets(): Promise<void> {
   });
 }
 
+/**
+ * Migration ponctuelle : le module Actualités groupait initialement un flux RSS par entrée (un
+ * "sujet" = un flux), obligeant à retaper le même libellé pour lier plusieurs flux à un même sujet.
+ * La config passe à une liste de sujets contenant chacun plusieurs flux ; on regroupe les anciennes
+ * entrées plates par libellé identique plutôt que de perdre silencieusement les flux déjà configurés.
+ */
+async function migrateLegacyNewsFeeds(): Promise<void> {
+  const cfg = configStore.getConfig();
+  const legacyFeeds = (cfg.modules.find((m) => m.id === "news")?.config as any)?.feeds;
+  if (!Array.isArray(legacyFeeds)) return; // pas de config Actualités, ou déjà migrée
+
+  await configStore.updateConfig((draft) => {
+    const inst = draft.modules.find((m) => m.id === "news");
+    if (!inst) return;
+    const feeds = Array.isArray((inst.config as any).feeds) ? ((inst.config as any).feeds as any[]) : [];
+
+    type MigratedTopic = { label: string; feeds: { url: string; maxArticles: number }[] };
+    const topics = new Map<string, MigratedTopic>();
+    for (const feed of feeds) {
+      const label = feed?.label ?? "";
+      const topic: MigratedTopic = topics.get(label) ?? { label, feeds: [] };
+      topic.feeds.push({ url: feed?.url ?? "", maxArticles: feed?.maxArticles ?? 5 });
+      topics.set(label, topic);
+    }
+
+    delete (inst.config as any).feeds;
+    (inst.config as any).topics = [...topics.values()];
+  });
+}
+
 /** Ajoute en base une entrée pour tout module du registre qui n'y figure pas encore. */
 async function ensureInstances(): Promise<void> {
   await migrateLegacyMarketsModule();
   await migrateLegacySearchableAssets();
+  await migrateLegacyNewsFeeds();
 
   const cfg = configStore.getConfig();
   const existingIds = new Set(cfg.modules.map((m) => m.id));

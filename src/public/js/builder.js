@@ -262,6 +262,23 @@ function builderPage() {
       mod.config[field.key].splice(index, 1);
     },
 
+    addNewsTopic(mod, field) {
+      if (!Array.isArray(mod.config[field.key])) mod.config[field.key] = [];
+      mod.config[field.key].push({ label: "", feeds: [{ url: "", maxArticles: 5 }] });
+    },
+
+    removeNewsTopic(mod, field, topicIndex) {
+      mod.config[field.key].splice(topicIndex, 1);
+    },
+
+    addNewsFeed(mod, field, topicIndex) {
+      mod.config[field.key][topicIndex].feeds.push({ url: "", maxArticles: 5 });
+    },
+
+    removeNewsFeed(mod, field, topicIndex, feedIndex) {
+      mod.config[field.key][topicIndex].feeds.splice(feedIndex, 1);
+    },
+
     onImageSelected(mod, field, event) {
       const file = event.target.files?.[0];
       event.target.value = ""; // permet de re-sélectionner le même fichier ensuite
@@ -288,6 +305,15 @@ function builderPage() {
 
     removeImage(mod, field) {
       mod.config[field.key] = "";
+    },
+
+    async runModuleAction(endpoint, method) {
+      try {
+        await api(endpoint, { method });
+        this.$dispatch("toast", { message: "Action effectuée.", type: "success" });
+      } catch (e) {
+        this.$dispatch("toast", { message: e.message, type: "error" });
+      }
     },
   };
 }

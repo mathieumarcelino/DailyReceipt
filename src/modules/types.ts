@@ -15,6 +15,17 @@ export type ConfigField =
   | {
       key: string;
       label: string;
+      type: "action";
+      /** Libellé du bouton (distinct de `label`, affiché au-dessus comme pour les autres champs). */
+      buttonLabel: string;
+      /** Route backend appelée (POST par défaut) au clic ; aucune donnée de formulaire n'est envoyée. */
+      endpoint: string;
+      method?: "POST" | "DELETE";
+      help?: string;
+    }
+  | {
+      key: string;
+      label: string;
       type: "coordinates";
       /** Clés de configuration mises à jour par le repère sur la carte (ex: "latitude"/"longitude"). */
       latKey: string;
@@ -30,6 +41,18 @@ export type ConfigField =
       itemLabel: string;
       /** Champs édités pour chaque élément du tableau (une seule profondeur, pas de tableau imbriqué). */
       itemSchema: Exclude<ConfigField, { type: "array" }>[];
+      help?: string;
+    }
+  | {
+      key: string;
+      label: string;
+      type: "news-topics";
+      /**
+       * Liste de sujets, chacun regroupant un ou plusieurs flux RSS (label + URL + nombre max
+       * d'articles) — champ spécifique plutôt qu'un `array` générique imbriqué (volontairement non
+       * supporté, voir le type "array" ci-dessus), pour permettre de lier plusieurs flux à un même
+       * sujet sans retaper son libellé à chaque flux. Utilisé par le module Actualités.
+       */
       help?: string;
     };
 

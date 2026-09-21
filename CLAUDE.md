@@ -53,7 +53,7 @@ Chaque module implémente `ReceiptModule<TConfig, TData>` (`src/modules/types.ts
 2. Le rendu du champ dans `builder.ejs` (+ un composant Alpine dédié dans `builder.js` si besoin d'état local, ex: `teamSearchState`/`stockSearchState`/`cryptoSearchState`/`coordinatesPickerState`).
 3. Si le champ a besoin de données externes (recherche, géocodage...), une route backend dédiée (`src/routes/*.routes.ts`) — jamais d'appel direct depuis le navigateur vers l'API tierce (voir plus bas pourquoi).
 
-Champs spécialisés existants : `team-search`/`stock-search`/`crypto-search` (widget rechercher → choisir dans une liste de résultats, pour éviter de suivre silencieusement la mauvaise entité en cas d'homonymie — voir `docs/modules/{sports,stocks,crypto}.md`), `coordinates` (petite carte Leaflet/OpenStreetMap avec repère déplaçable, `latKey`/`lngKey` + `cityKey` optionnel pour un géocodage inverse auto-remplissant sans jamais écraser une saisie manuelle ultérieure).
+Champs spécialisés existants : `team-search`/`stock-search`/`crypto-search` (widget rechercher → choisir dans une liste de résultats, pour éviter de suivre silencieusement la mauvaise entité en cas d'homonymie — voir `docs/modules/{sports,stocks,crypto}.md`), `coordinates` (petite carte Leaflet/OpenStreetMap avec repère déplaçable, `latKey`/`lngKey` + `cityKey` optionnel pour un géocodage inverse auto-remplissant sans jamais écraser une saisie manuelle ultérieure), `action` (bouton générique déclenchant un appel backend sans donnée de formulaire, ex: vidage manuel du cache du module Actualités — pas de composant Alpine dédié nécessaire, juste `endpoint`/`method` dans le `ConfigField`), `news-topics` (liste de sujets contenant chacun plusieurs flux RSS, `src/modules/news.module.ts` — un niveau d'imbrication que le champ générique `array` exclut volontairement, d'où un champ dédié plutôt qu'un `array` de `array`).
 
 Chaque module a sa propre fiche dans `docs/modules/` (rendu exact sur le ticket, champs de configuration, source de données, particularités) — à tenir à jour si tu modifies le rendu ou la configuration d'un module.
 
@@ -65,7 +65,7 @@ Chaque module a sa propre fiche dans `docs/modules/` (rendu exact sur le ticket,
 
 Un seul fichier JSON (`ConfigStore`, `src/config/store.ts`) : cache en mémoire + file d'attente d'écriture sérialisée (`writeQueue`) pour éviter toute corruption en cas d'écritures concurrentes (ex: sauvegarde config + mise à jour du statut de dernière impression en parallèle). `getConfig()` renvoie un clone profond (jamais l'objet interne) ; toute modification passe par `updateConfig(mutator)` qui clone → mute → persiste sur disque → remplace le cache.
 
-Quand tu changes la **forme** de la config stockée d'un module (ex: un champ texte devient un objet structuré), ajoute une migration dans `ensureInstances()`/`migrateLegacy*()` (`src/services/modules.service.ts`) plutôt que de casser silencieusement la config déjà enregistrée par un utilisateur — deux migrations de ce type existent déjà et servent de modèle (fusion Bourse+Crypto → séparation en deux modules, puis symbole texte → objet candidat de recherche pour ces deux mêmes modules).
+Quand tu changes la **forme** de la config stockée d'un module (ex: un champ texte devient un objet structuré), ajoute une migration dans `ensureInstances()`/`migrateLegacy*()` (`src/services/modules.service.ts`) plutôt que de casser silencieusement la config déjà enregistrée par un utilisateur — trois migrations de ce type existent déjà et servent de modèle (fusion Bourse+Crypto → séparation en deux modules, puis symbole texte → objet candidat de recherche pour ces deux mêmes modules, puis flux RSS à plat → sujets groupés pour le module Actualités).
 
 ### Frontend
 
@@ -80,15 +80,16 @@ Tailwind est compilé (pas de CDN) via `npm run dev:css`/`build:css`.
 - `network-printer.ts` : envoi TCP brut sur le port 9100 (JetDirect/raw, standard sur la quasi-totalité des imprimantes thermiques).
 - `image-raster.ts` : PNG → 1-bit noir/blanc (tramage Floyd-Steinberg) pour la commande raster `GS v 0`, utilisé par le module En-tête pour un logo optionnel ; génère aussi un aperçu PNG data-URL fidèle au rendu tramé réel (même tramage que le papier).
 
-### Intégrations externes (toutes sans clé API)
+### Intégrations externes
 
 | Module | API | Détail |
 |---|---|---|
-| Météo | Open-Meteo | `current` (température instantanée uniquement) + `daily` (tout le reste : condition, min/max, ressenti, précipitations %/mm, vent max, lever/coucher) |
-| Bourse | Yahoo Finance | `/v1/finance/search` (recherche) + `/v8/finance/chart/{symbol}` (cotation) — `shortName` de l'API est tronqué à ~31 caractères sans "…", préférer `longName` |
-| Crypto | CoinGecko | `/v3/search` (recherche) + `/v3/simple/price` (cotation groupée) |
-| Sports | ESPN (API publique non documentée) | recherche + calendrier + infos équipe + résumé de match, scopé par sport/ligue — voir `docs/modules/sports.md`, les particularités déjà rencontrées y sont consignées |
-| Météo (géocodage) | Nominatim (OSM) | reverse geocoding, `User-Agent` identifiant obligatoire |
+| Météo | Open-Meteo (sans clé) | `current` (température instantanée uniquement) + `daily` (tout le reste : condition, min/max, ressenti, précipitations %/mm, vent max, lever/coucher) |
+| Bourse | Yahoo Finance (sans clé) | `/v1/finance/search` (recherche) + `/v8/finance/chart/{symbol}` (cotation) — `shortName` de l'API est tronqué à ~31 caractères sans "…", préférer `longName` |
+| Crypto | CoinGecko (sans clé) | `/v3/search` (recherche) + `/v3/simple/price` (cotation groupée) |
+| Sports | ESPN (API publique non documentée, sans clé) | recherche + calendrier + infos équipe + résumé de match, scopé par sport/ligue — voir `docs/modules/sports.md`, les particularités déjà rencontrées y sont consignées |
+| Météo (géocodage) | Nominatim (OSM, sans clé) | reverse geocoding, `User-Agent` identifiant obligatoire |
+| Actualités | flux RSS/Atom (sans clé) + Google Gemini (clé API requise) | `fast-xml-parser` normalise RSS 2.0 (`rss.channel.item`) et Atom (`feed.entry`) — voir `docs/modules/news.md`. Gemini reste la seule intégration à clé API du projet : conservée malgré la préférence "sans clé" du projet car aucune alternative sans clé équivalente n'existe pour du résumé par IA ; offre gratuite au moment de l'écriture, nom de modèle laissé configurable (pas figé en dur) car l'offre de modèles évolue régulièrement |
 
 Ces API ne sont pas toujours bien documentées ou cohérentes entre leurs propres champs (ex: `weather_code` et `precipitation_probability_max` d'Open-Meteo viennent de sous-modèles différents et peuvent sembler se contredire ; la forme des réponses ESPN varie selon le sport). **Vérifie le comportement réel avec un appel direct (`curl`) avant d'écrire du code de parsing**, plutôt que de deviner la forme d'une réponse à partir de sa documentation ou de la mémoire.
 

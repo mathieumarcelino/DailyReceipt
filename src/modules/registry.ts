@@ -5,6 +5,7 @@ import birthdaysModule from "./birthdays.module";
 import stocksModule from "./stocks.module";
 import cryptoModule from "./crypto.module";
 import sportsModule from "./sports.module";
+import newsModule from "./news.module";
 import footerModule from "./footer.module";
 
 /**
@@ -19,6 +20,7 @@ export const MODULE_REGISTRY: ReceiptModule<any, any>[] = [
   stocksModule,
   cryptoModule,
   sportsModule,
+  newsModule,
   footerModule,
 ];
 

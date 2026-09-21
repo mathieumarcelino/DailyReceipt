@@ -13,6 +13,7 @@ import sportsRoutes from "./routes/sports.routes";
 import stocksRoutes from "./routes/stocks.routes";
 import cryptoRoutes from "./routes/crypto.routes";
 import weatherRoutes from "./routes/weather.routes";
+import newsRoutes from "./routes/news.routes";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -39,6 +40,7 @@ async function main() {
   await app.register(stocksRoutes);
   await app.register(cryptoRoutes);
   await app.register(weatherRoutes);
+  await app.register(newsRoutes);
 
   app.setErrorHandler((err: FastifyError, _req, reply) => {
     app.log.error(err);
