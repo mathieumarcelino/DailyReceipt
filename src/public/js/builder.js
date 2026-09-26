@@ -264,15 +264,35 @@ function builderPage() {
 
     addNewsTopic(mod, field) {
       if (!Array.isArray(mod.config[field.key])) mod.config[field.key] = [];
-      mod.config[field.key].push({ label: "", feeds: [{ url: "", maxArticles: 5 }] });
+      mod.config[field.key].push({ label: "", prompt: "", storiesCount: 8, hoursBack: 24, feeds: [{ url: "" }] });
     },
 
     removeNewsTopic(mod, field, topicIndex) {
       mod.config[field.key].splice(topicIndex, 1);
     },
 
+    moveNewsTopic(mod, field, topicIndex, direction) {
+      const topics = mod.config[field.key];
+      const target = topicIndex + direction;
+      if (target < 0 || target >= topics.length) return;
+      [topics[topicIndex], topics[target]] = [topics[target], topics[topicIndex]];
+      // Les cartes sont indexées par position : on resynchronise leur état local (prompt ouvert/fermé).
+      this.$nextTick(() => window.dispatchEvent(new CustomEvent("news-topics-moved")));
+    },
+
+    /** Pré-remplit le champ avec le prompt par défaut la première fois, pour partir d'une base à modifier. */
+    async openNewsPrompt(topic) {
+      if (topic.prompt) return;
+      try {
+        const data = await api("/api/news/default-prompt");
+        topic.prompt = data.prompt;
+      } catch (e) {
+        this.$dispatch("toast", { message: e.message, type: "error" });
+      }
+    },
+
     addNewsFeed(mod, field, topicIndex) {
-      mod.config[field.key][topicIndex].feeds.push({ url: "", maxArticles: 5 });
+      mod.config[field.key][topicIndex].feeds.push({ url: "" });
     },
 
     removeNewsFeed(mod, field, topicIndex, feedIndex) {

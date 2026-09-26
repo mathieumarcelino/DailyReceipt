@@ -1,6 +1,8 @@
 import { XMLParser } from "fast-xml-parser";
 
 export interface RssItem {
+  /** Nom de domaine du flux sans "www." (ex: "lemonde.fr") : court et stable, pour identifier la source dans les prompts. */
+  source: string;
   title: string;
   link: string;
   description: string;
@@ -22,9 +24,10 @@ export async function fetchRssItems(feedUrl: string, maxItems: number): Promise<
   const xml = await res.text();
   const json = parser.parse(xml);
 
+  const source = sourceName(feedUrl);
   return extractRawItems(json)
     .slice(0, maxItems)
-    .map(normalizeItem)
+    .map((raw) => normalizeItem(raw, source))
     .filter((item) => item.title || item.description);
 }
 
@@ -40,15 +43,24 @@ function extractRawItems(json: any): any[] {
 
 const MAX_DESCRIPTION_CHARS = 1500;
 
+function sourceName(feedUrl: string): string {
+  try {
+    return new URL(feedUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return feedUrl;
+  }
+}
+
 /**
  * `content:encoded` (module RSS "content", très répandu sur les flux WordPress) contient souvent le
  * corps complet de l'article directement dans le flux — préféré à `description`/`summary` (un simple
  * extrait) quand il est présent, pour donner à l'IA plus de matière que le seul titre sans pour autant
  * scraper la page liée (voir la limite volontaire "Option A" du module Actualités, docs/modules/news.md).
  */
-function normalizeItem(raw: any): RssItem {
+function normalizeItem(raw: any, source: string): RssItem {
   const descriptionSource = raw?.["content:encoded"] ?? raw?.description ?? raw?.summary ?? raw?.content;
   return {
+    source,
     title: stripHtml(extractText(raw?.title)),
     link: extractLink(raw?.link),
     description: truncate(stripHtml(extractText(descriptionSource)), MAX_DESCRIPTION_CHARS),

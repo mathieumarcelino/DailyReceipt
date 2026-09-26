@@ -26,7 +26,7 @@ docker compose up -d --build   # build + lancement en conteneur
 
 Pas de linter configuré. Les tests utilisent `node:test`/`node:assert` (zéro dépendance ajoutée, cf. philosophie minimaliste) plutôt que Jest/Vitest, dans un dossier `test/` séparé qui reflète la structure de `src/` (ex: `src/receipt/context.ts` → `test/receipt/context.test.ts`, imports relatifs du type `../../src/...`) — pas de config supplémentaire à maintenir, `npm test` ramasse tout via `find`. Pour lancer un seul fichier : `npx tsx --test test/receipt/context.test.ts`. Priorité de test : la logique **pure et déterministe** (`ReceiptBuilder`, `commands.ts`, les helpers de `src/lib/`) et le parsing des réponses d'API externes via des fixtures JSON + mock de `fetch` (`t.mock.method(globalThis, "fetch", ...)`, voir `weather.module.test.ts`) — pas de tests d'intégration bout-en-bout contre les vraies API tierces.
 
-Variables d'environnement : `PORT` (3000), `HOST` (0.0.0.0), `CONFIG_PATH` (`/data/config.json`, avec repli automatique sur `./data/config.json` si `/data` n'est pas accessible en écriture et que la variable n'a pas été fixée explicitement — voir `src/config/store.ts`), `TZ` (fuseau pour le cron et l'affichage des heures).
+Variables d'environnement : `PORT` (3000), `HOST` (0.0.0.0), `CONFIG_PATH` (`/data/config.json`, avec repli automatique sur `./data/config.json` si `/data` n'est pas accessible en écriture et que la variable n'a pas été fixée explicitement — voir `src/config/store.ts`), `TZ` (fuseau pour le cron et l'affichage des heures), `NEWS_DEBUG=1` (optionnel : affiche dans la console du serveur les prompts envoyés à Gemini et ses réponses brutes pour le module Actualités, voir `docs/modules/news.md`).
 
 ## Architecture
 

@@ -72,6 +72,7 @@ describe("fetchRssItems", () => {
 
     assert.equal(items.length, 3);
     assert.deepEqual(items[0], {
+      source: "example.com",
       title: "Titre article 1",
       link: "https://example.com/article1",
       description: "Description simple de l'article 1",
@@ -94,6 +95,12 @@ describe("fetchRssItems", () => {
     t.mock.method(globalThis, "fetch", async () => fakeXmlResponse(RSS2_FIXTURE));
     const items = await fetchRssItems("https://example.com/rss.xml", 2);
     assert.equal(items.length, 2);
+  });
+
+  test("la source est le nom de domaine du flux, sans le préfixe www.", async (t) => {
+    t.mock.method(globalThis, "fetch", async () => fakeXmlResponse(RSS2_SINGLE_ITEM_FIXTURE));
+    const [item] = await fetchRssItems("https://www.lemonde.fr/pixels/rss_full.xml", 10);
+    assert.equal(item.source, "lemonde.fr");
   });
 
   test("un flux avec un seul <item> (objet, pas tableau) est géré comme les autres", async (t) => {
