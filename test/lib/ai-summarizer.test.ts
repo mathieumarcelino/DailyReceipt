@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { buildPrompt, selectStoriesWithGemini, summarizeWithGemini, type SelectOptions, type SummarizeOptions } from "../../src/lib/ai-summarizer";
+import { buildPrompt, sanitizeForPrint, selectStoriesWithGemini, summarizeWithGemini, type SelectOptions, type SummarizeOptions } from "../../src/lib/ai-summarizer";
 
 function fakeJsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -65,13 +65,14 @@ describe("summarizeWithGemini", () => {
     assert.ok(!/\{[a-z_]+\}/.test(prompt), "aucune variable ne doit rester non résolue");
   });
 
-  test("tronque avec une ellipse si la réponse dépasse largement la longueur cible", async (t) => {
+  test("tronque avec '...' (ASCII, imprimable sur tous les profils) si la réponse dépasse largement la longueur cible", async (t) => {
     const longText = "a".repeat(1000);
     t.mock.method(globalThis, "fetch", async () => geminiSuccess(longText));
     const summary = await summarizeWithGemini("texte", options());
 
     assert.equal(summary.length, 150);
-    assert.ok(summary.endsWith("…"));
+    assert.ok(summary.endsWith("..."));
+    assert.ok(!summary.includes("…"));
   });
 
   test("lève une erreur explicite en cas d'échec HTTP persistant, avec le message de Google", async (t) => {
@@ -119,6 +120,36 @@ describe("summarizeWithGemini", () => {
   test("lève une erreur explicite si le résumé renvoyé est une chaîne vide", async (t) => {
     t.mock.method(globalThis, "fetch", async () => geminiSuccess("   "));
     await assert.rejects(() => summarizeWithGemini("texte", options()), /Réponse Gemini invalide/);
+  });
+
+  test("convertit la typographie de Gemini (apostrophes, tirets...) en caractères ASCII imprimables sur ticket", async (t) => {
+    t.mock.method(globalThis, "fetch", async () => geminiSuccess("L’entreprise — leader du secteur ’ annonce “une rupture”…"));
+    const summary = await summarizeWithGemini("texte", options());
+    assert.equal(summary, `L'entreprise - leader du secteur ' annonce "une rupture"...`);
+  });
+});
+
+describe("sanitizeForPrint", () => {
+  test("remplace apostrophes et guillemets typographiques par leurs équivalents ASCII", () => {
+    assert.equal(sanitizeForPrint("L’entreprise ‘test’ dit “bonjour”"), `L'entreprise 'test' dit "bonjour"`);
+  });
+
+  test("remplace les tirets longs et les points de suspension", () => {
+    assert.equal(sanitizeForPrint("2020–2026 — fin …"), "2020-2026 - fin ...");
+  });
+
+  test("remplace les espaces Unicode (insécable, fine...) par une espace normale", () => {
+    assert.equal(sanitizeForPrint("100 % de test"), "100 % de test");
+  });
+
+  test("ne touche pas aux accents (imprimables sur les profils CP437/CP858/CP1252)", () => {
+    const text = "Économiser énormément, ça se déroule bientôt à Noël";
+    assert.equal(sanitizeForPrint(text), text);
+  });
+
+  test("laisse un texte déjà ASCII inchangé", () => {
+    const text = "Rien a remplacer ici, 100% ascii.";
+    assert.equal(sanitizeForPrint(text), text);
   });
 });
 

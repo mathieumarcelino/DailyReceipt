@@ -67,7 +67,44 @@ export function buildPrompt(
  */
 export async function summarizeWithGemini(text: string, options: SummarizeOptions): Promise<string> {
   const summary = await callGemini(buildPrompt(text, options), { ...options, debugLabel: "PASSE 2 (synthèse)" });
-  return truncate(summary, options.maxChars);
+  return truncate(sanitizeForPrint(summary), options.maxChars);
+}
+
+/**
+ * Gemini écrit spontanément en typographie "soignée" (apostrophes et guillemets courbes, tirets longs,
+ * points de suspension...) — absente des pages de code ESC/POS (CP437/CP858/CP1252), où l'imprimante
+ * remplace silencieusement chaque caractère non supporté par un "?". On les convertit ici vers leur
+ * équivalent ASCII, imprimable sur les trois profils, plutôt que de laisser passer un caractère qui ne
+ * sera découvert cassé qu'à l'impression réelle sur papier.
+ */
+const PRINT_SAFE_REPLACEMENTS: Record<string, string> = {
+  "‘": "'", // ' quote simple ouvrante
+  "’": "'", // ' quote simple fermante (apostrophe typographique — le cas remonté par l'utilisateur)
+  "‚": "'", // ‚
+  "‛": "'", // ‛
+  "“": '"', // " guillemet double ouvrant
+  "”": '"', // " guillemet double fermant
+  "„": '"', // „
+  "‟": '"', // ‟
+  "‐": "-", // ‐ trait d'union typographique
+  "‑": "-", // ‑ trait d'union insécable
+  "‒": "-", // ‒
+  "–": "-", // – tiret demi-cadratin
+  "—": "-", // — tiret cadratin
+  "―": "-", // ― barre horizontale
+  "…": "...", // … points de suspension
+  "•": "-", // • puce (au cas où l'IA en glisse une malgré la consigne "aucune puce")
+  "‣": "-", // ‣
+  " ": " ", // espace insécable
+  " ": " ", // espace fine insécable
+  " ": " ", // espace fine
+  " ": " ", // espace demi-cadratin
+  " ": " ", // espace cadratin
+};
+const PRINT_SAFE_PATTERN = new RegExp(`[${Object.keys(PRINT_SAFE_REPLACEMENTS).join("")}]`, "g");
+
+export function sanitizeForPrint(text: string): string {
+  return text.replace(PRINT_SAFE_PATTERN, (char) => PRINT_SAFE_REPLACEMENTS[char]);
 }
 
 export interface StoryCandidate {
@@ -288,5 +325,6 @@ async function readErrorMessage(res: Response): Promise<string> {
 /** Garde-fou si l'IA ignore la consigne de longueur : mieux vaut tronquer que gâcher du papier. */
 function truncate(text: string, maxChars: number): string {
   const hardLimit = Math.round(maxChars * 1.5);
-  return text.length > hardLimit ? `${text.slice(0, hardLimit - 1)}…` : text;
+  // "..." (ASCII) plutôt que "…" : imprimable sur les trois profils de codepage, voir sanitizeForPrint().
+  return text.length > hardLimit ? `${text.slice(0, hardLimit - 3)}...` : text;
 }
