@@ -12,7 +12,7 @@
     <!-- Liste des modules -->
     <div class="space-y-3" x-show="!loading" x-cloak>
       <template x-for="(mod, index) in modules" :key="mod.id">
-        <div class="card overflow-hidden">
+        <div class="card overflow-hidden" :class="expandedId === mod.id ? '!overflow-visible' : ''">
           <div class="p-4 flex items-center gap-3">
             <div class="flex flex-col gap-0.5 shrink-0">
               <button type="button" class="btn-icon" :disabled="index === 0" @click="move(index, -1)" title="Monter">▲</button>
@@ -23,7 +23,6 @@
               <div class="font-semibold" x-text="mod.name"></div>
               <div class="text-sm text-gray-500 dark:text-gray-400 break-words" x-text="mod.description"></div>
               <div class="text-sm text-gray-400 dark:text-gray-500 break-words" x-show="mod.dataSource">
-                Source des données :
                 <a :href="'https://' + mod.dataSource" target="_blank" rel="noopener noreferrer" class="hover:text-accent-600" x-text="mod.dataSource"></a>
               </div>
             </div>
@@ -45,14 +44,20 @@
               <div class="mb-4">
                 <template x-if="field.type === 'text'">
                   <div>
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <input type="text" class="field-input" x-model="mod.config[field.key]" :placeholder="field.placeholder || ''" />
                   </div>
                 </template>
 
                 <template x-if="field.type === 'password'">
                   <div x-data="{ showPw: false }">
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <div class="relative">
                       <input
                         :type="showPw ? 'text' : 'password'"
@@ -73,22 +78,31 @@
 
                 <template x-if="field.type === 'number'">
                   <div>
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <input type="number" class="field-input" x-model.number="mod.config[field.key]" :step="field.step || 1" />
                   </div>
                 </template>
 
                 <template x-if="field.type === 'boolean'">
-                  <label class="flex items-center gap-3 cursor-pointer w-fit">
-                    <input type="checkbox" x-model="mod.config[field.key]" class="sr-only peer" />
-                    <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
-                    <span class="text-sm font-medium" x-text="field.label"></span>
-                  </label>
+                  <div class="flex items-center gap-1.5">
+                    <label class="flex items-center gap-3 cursor-pointer w-fit">
+                      <input type="checkbox" x-model="mod.config[field.key]" class="sr-only peer" />
+                      <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
+                      <span class="text-sm font-medium" x-text="field.label"></span>
+                    </label>
+                    <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                  </div>
                 </template>
 
                 <template x-if="field.type === 'select'">
                   <div>
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <select class="field-input" x-model="mod.config[field.key]">
                       <template x-for="opt in field.options" :key="opt.value">
                         <option :value="opt.value" x-text="opt.label"></option>
@@ -99,7 +113,10 @@
 
                 <template x-if="field.type === 'action'">
                   <div x-data="{ running: false }">
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <button
                       type="button"
                       class="btn-secondary"
@@ -114,7 +131,10 @@
 
                 <template x-if="field.type === 'image'">
                   <div>
-                    <label class="field-label" x-text="field.label"></label>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
                     <div class="flex items-center gap-3">
                       <div class="w-24 h-16 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-white flex items-center justify-center overflow-hidden shrink-0">
                         <img x-show="mod.config[field.key]" :src="mod.config[field.key]" class="max-w-full max-h-full object-contain" />
@@ -133,12 +153,17 @@
                 </template>
 
                 <template x-if="field.type === 'coordinates' && expandedId === mod.id">
-                  <div x-data="coordinatesPickerState(mod, field)">
-                    <label class="field-label" x-text="field.label"></label>
-                    <div x-ref="mapEl" class="rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700" style="height: 220px"></div>
-                    <div class="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span>Latitude : <span class="font-mono" x-text="mod.config[field.latKey].toFixed(4)"></span></span>
-                      <span>Longitude : <span class="font-mono" x-text="mod.config[field.lngKey].toFixed(4)"></span></span>
+                  <div>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="field.label"></label>
+                      <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                    </div>
+                    <div x-data="coordinatesPickerState(mod, field)">
+                      <div x-ref="mapEl" class="rounded-lg overflow-hidden border border-gray-300 dark:border-gray-700" style="height: 220px"></div>
+                      <div class="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span>Latitude : <span class="font-mono" x-text="mod.config[field.latKey].toFixed(4)"></span></span>
+                        <span>Longitude : <span class="font-mono" x-text="mod.config[field.lngKey].toFixed(4)"></span></span>
+                      </div>
                     </div>
                   </div>
                 </template>
@@ -146,7 +171,10 @@
                 <template x-if="field.type === 'news-topics'">
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <span class="field-label mb-0" x-text="field.label"></span>
+                      <div class="flex items-center gap-1.5">
+                        <span class="field-label mb-0" x-text="field.label"></span>
+                        <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                      </div>
                       <button type="button" class="btn-secondary !py-1 !px-2 text-xs" @click="addNewsTopic(mod, field)">+ Ajouter un sujet</button>
                     </div>
 
@@ -154,9 +182,9 @@
                       <template x-for="(topic, topicIdx) in (mod.config[field.key] || [])" :key="topicIdx">
                         <div class="p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" x-data="{ promptOpen: !!topic.prompt, promptLoading: false }" @news-topics-moved.window="promptOpen = !!topic.prompt">
                           <div class="flex items-end gap-2 mb-2">
-                            <div class="flex flex-col gap-0.5 shrink-0">
-                              <button type="button" class="btn-icon" :disabled="topicIdx === 0" @click="moveNewsTopic(mod, field, topicIdx, -1)" title="Monter ce sujet">▲</button>
-                              <button type="button" class="btn-icon" :disabled="topicIdx === mod.config[field.key].length - 1" @click="moveNewsTopic(mod, field, topicIdx, 1)" title="Descendre ce sujet">▼</button>
+                            <div class="flex flex-col gap-0.5 shrink-0 self-center">
+                              <button type="button" class="btn-icon !w-5 !h-5 text-xs" :disabled="topicIdx === 0" @click="moveNewsTopic(mod, field, topicIdx, -1)" title="Monter ce sujet">▲</button>
+                              <button type="button" class="btn-icon !w-5 !h-5 text-xs" :disabled="topicIdx === mod.config[field.key].length - 1" @click="moveNewsTopic(mod, field, topicIdx, 1)" title="Descendre ce sujet">▼</button>
                             </div>
                             <div class="flex-1">
                               <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Sujet affiché</label>
@@ -174,9 +202,6 @@
                               <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Remonter de (heures)</label>
                               <input type="number" class="field-input" x-model.number="topic.hoursBack" min="1" max="72" placeholder="24" />
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
-                              Tous les articles de la période sont triés par l'IA (doublons entre sources regroupés), seules les histoires les plus importantes sont résumées, classées par score. Vide : 8 sujets, 24 h (72 h maximum).
-                            </p>
                           </div>
 
                           <div class="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
@@ -226,7 +251,10 @@
                 <template x-if="field.type === 'array'">
                   <div>
                     <div class="flex items-center justify-between mb-2">
-                      <span class="field-label mb-0" x-text="field.label"></span>
+                      <div class="flex items-center gap-1.5">
+                        <span class="field-label mb-0" x-text="field.label"></span>
+                        <span class="help-icon" x-show="field.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="field.help" role="tooltip"></span></span>
+                      </div>
                       <button type="button" class="btn-secondary !py-1 !px-2 text-xs" @click="addArrayItem(mod, field)">+ Ajouter</button>
                     </div>
 
@@ -236,7 +264,10 @@
                           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
                             <template x-for="subField in field.itemSchema" :key="subField.key">
                               <div :class="(subField.type === 'team-search' || subField.type === 'stock-search' || subField.type === 'crypto-search') ? 'sm:col-span-3' : ''">
-                                <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1" x-text="subField.label"></label>
+                                <div class="flex items-center gap-1.5 mb-1">
+                                  <label class="text-xs text-gray-500 dark:text-gray-400" x-text="subField.label"></label>
+                                  <span class="help-icon" x-show="subField.help" x-data="{ helpOpen: false }" tabindex="0" @mouseenter="helpOpen = true" @mouseleave="helpOpen = false" @focus="helpOpen = true" @blur="helpOpen = false"><span class="help-icon-badge" aria-hidden="true">i</span><span class="help-tooltip" x-show="helpOpen" x-cloak x-text="subField.help" role="tooltip"></span></span>
+                                </div>
 
                                 <template x-if="subField.type === 'team-search'">
                                   <div x-data="teamSearchState(item)">
@@ -426,8 +457,6 @@
                     </div>
                   </div>
                 </template>
-
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-show="field.help" x-text="field.help"></p>
               </div>
             </template>
 
@@ -477,7 +506,11 @@
             </template>
           </div>
         </template>
-        <p class="text-gray-400 text-xs text-center py-6" x-show="!preview.lines.length">Aucun module actif.</p>
+        <div class="flex flex-col items-center justify-center gap-2 py-16" x-show="previewLoading && !preview.lines.length" x-cloak>
+          <div class="w-6 h-6 border-2 border-gray-300 border-t-accent-600 rounded-full animate-spin"></div>
+          <p class="text-gray-400 text-xs">Chargement de l'aperçu...</p>
+        </div>
+        <p class="text-gray-400 text-xs text-center py-6" x-show="!previewLoading && !preview.lines.length">Aucun module actif.</p>
       </div>
     </div>
   </div>

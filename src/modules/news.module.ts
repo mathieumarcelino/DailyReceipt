@@ -42,7 +42,7 @@ const newsModule: ReceiptModule<NewsConfig, NewsData> = {
   id: "news",
   name: "Actualités",
   description: "Résumé par IA des principaux articles de vos flux RSS suivis",
-  dataSource: "flux RSS + generativelanguage.googleapis.com (Gemini)",
+  dataSource: "aistudio.google.com",
   configSchema: [
     {
       key: "topics",

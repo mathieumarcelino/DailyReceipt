@@ -31,4 +31,15 @@
   .btn-icon {
     @apply inline-flex items-center justify-center rounded-md w-8 h-8 text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 disabled:opacity-30 disabled:pointer-events-none transition-colors;
   }
+  .help-icon {
+    @apply relative inline-flex;
+  }
+  .help-icon-badge {
+    @apply inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600 text-[10px] font-semibold leading-none text-gray-400 dark:text-gray-500 cursor-help select-none hover:border-accent-500 hover:text-accent-600 dark:hover:border-accent-500 dark:hover:text-accent-500 transition-colors;
+  }
+  .help-tooltip {
+    /* z-index bien au-dessus des panneaux/contrôles Leaflet (jusqu'à 1000, voir vendor/leaflet/leaflet.css)
+       pour rester visible même au-dessus de la carte du champ "coordinates". */
+    @apply absolute z-[1100] top-full left-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-lg bg-gray-900 dark:bg-gray-700 text-white text-xs leading-relaxed px-3 py-2 shadow-lg;
+  }
 }

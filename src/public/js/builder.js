@@ -175,7 +175,9 @@ function builderPage() {
     expandedId: null,
     savingId: null,
     loading: true,
-    previewLoading: false,
+    // true dès le départ (pas seulement une fois loadPreview() lancé) pour éviter un flash de
+    // "Aucun module actif" avant même que le premier chargement des modules ne démarre.
+    previewLoading: true,
 
     async init() {
       await this.loadModules();
