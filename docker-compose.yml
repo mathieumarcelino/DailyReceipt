@@ -1,8 +1,9 @@
 services:
   dailyreceipt:
     build: .
-    # Ou, une fois l'image publiée sur un registre :
-    # image: ghcr.io/votre-compte/dailyreceipt:latest
+    # Ou, pour utiliser l'image publiée par GitHub Actions plutôt que de la
+    # construire localement (voir README, section TrueNAS) :
+    # image: ghcr.io/mathieumarcelino/dailyreceipt:latest
     container_name: dailyreceipt
     restart: unless-stopped
     ports:

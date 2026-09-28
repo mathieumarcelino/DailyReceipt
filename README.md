@@ -120,7 +120,38 @@ docker compose up -d --build
 
 L'application sera disponible sur http://<IP-du-NAS>:3000. La configuration est persistée dans le volume nommé `dailyreceipt-data` (mappé sur `/data` dans le conteneur), donc conservée entre les mises à jour de l'image.
 
-Pour la déployer sur **TrueNAS SCALE** : le fichier `docker-compose.yml` fourni est directement utilisable soit via "Custom App" (Dockerfile/image) soit via l'import Docker Compose des versions récentes de TrueNAS SCALE (Apps → Discover Apps → Custom App, ou l'onglet Compose selon la version). Pensez à adapter le mapping de volume vers un dataset ZFS dédié si vous préférez un bind-mount à un volume nommé.
+### Image publiée
+
+À chaque push sur `main`, le workflow `.github/workflows/docker-publish.yml` construit l'image (linux/amd64) et la publie sur GitHub Container Registry : `ghcr.io/mathieumarcelino/dailyreceipt:latest` (ainsi qu'un tag par commit, et un tag `x.y.z` pour chaque tag Git `vx.y.z`). Le package hérite de la visibilité du dépôt (public) : aucun identifiant n'est nécessaire pour la télécharger.
+
+### Déployer sur TrueNAS SCALE (25.10+)
+
+1. **Dataset** : créez un dataset dédié (ex. `Data/app/dailyreceipt`) avec le preset **Apps**, et vérifiez que l'utilisateur `apps` (UID/GID 568) peut y écrire (propriétaire `apps:apps` ou ACL « Modifier »).
+2. **Apps → Discover Apps → ⋮ → Install via YAML**, avec (adaptez le chemin du dataset) :
+
+   ```yaml
+   services:
+     dailyreceipt:
+       image: ghcr.io/mathieumarcelino/dailyreceipt:latest
+       pull_policy: always
+       restart: unless-stopped
+       user: "568:568"
+       ports:
+         - "3000:3000"
+       environment:
+         TZ: "Europe/Paris"
+         PORT: "3000"
+         CONFIG_PATH: "/data/config.json"
+       volumes:
+         - /mnt/Data/app/dailyreceipt:/data
+   ```
+
+   - `user: "568:568"` est nécessaire : l'image tourne par défaut en `node` (UID 1000), qui n'a pas les droits d'écriture sur un dataset TrueNAS. Comme `CONFIG_PATH` est fixé explicitement, il n'y a pas de repli sur `./data` : sans droits d'écriture, la sauvegarde de la configuration échoue.
+   - `TZ` fixe l'heure de l'impression planifiée (sinon UTC).
+   - Le réseau bridge par défaut suffit pour joindre l'imprimante, tant que le NAS est sur le même réseau local qu'elle.
+3. **Mise à jour** : poussez sur `main`, attendez la fin du workflow GitHub Actions, puis cliquez sur **Update** ou redémarrez l'application dans TrueNAS (`pull_policy: always` retélécharge l'image). La configuration, stockée dans le dataset, est conservée.
+
+Sur un autre NAS (Synology, Unraid...), le même principe s'applique : utilisez l'image publiée plutôt que `build: .`, et montez un dossier persistant sur `/data` accessible en écriture par l'utilisateur du conteneur.
 
 ### Variables d'environnement
 
@@ -133,7 +164,7 @@ Pour la déployer sur **TrueNAS SCALE** : le fichier `docker-compose.yml` fourni
 
 ## Utilisation
 
-1. **Imprimante** : renseignez l'IP et le port de l'imprimante réseau, choisissez le profil de caractères (CP858 recommandé pour les accents français), puis cliquez sur "Tester l'impression".
+1. **Imprimante** : renseignez l'IP et le port de l'imprimante réseau, choisissez le profil de caractères (CP858 recommandé pour les accents français), puis cliquez sur "Tester l'impression". En cas d'erreur `EHOSTUNREACH`, l'imprimante n'est pas à l'adresse indiquée : imprimez sa fiche de statut réseau (bouton poussoir à l'arrière, près du port Ethernet, sur les Epson). Les interfaces réseau Epson (UB-E04...) sortent d'usine en IP fixe `192.168.192.168` ; changez-la via leur page d'administration web (EpsonNet Config → Configuration → TCP/IP → IPv4 Address).
 2. **Planification** : définissez l'heure d'impression quotidienne, ou déclenchez une impression immédiate avec "Imprimer maintenant".
 3. **Constructeur** : activez/désactivez les modules, réordonnez-les (▲/▼), configurez chacun (ville pour la météo, liste d'anniversaires, valeurs boursières suivies...). L'aperçu à droite reflète le rendu réel sur papier.
 
