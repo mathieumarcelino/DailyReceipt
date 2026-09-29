@@ -16,7 +16,7 @@ function makeTinyPngDataUrl(): string {
 describe("headerModule.fetchData", () => {
   test("retourne l'heure courante", async () => {
     const before = Date.now();
-    const data = await headerModule.fetchData({ title: "", logo: "" });
+    const data = await headerModule.fetchData({ title: "", logo: "" }, { ticketId: "t1" });
     const after = Date.now();
     assert.ok(data.now.getTime() >= before && data.now.getTime() <= after);
   });

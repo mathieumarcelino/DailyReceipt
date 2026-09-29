@@ -51,14 +51,19 @@ dailyreceipt/
     │   ├── builder.ts       # ReceiptLine[] -> Buffer ESC/POS (encodage iconv-lite)
     │   └── network-printer.ts # envoi TCP brut (port 9100)
     ├── services/
-    │   ├── modules.service.ts    # fusion registre + config utilisateur
-    │   ├── receipt-builder.ts    # orchestration des modules -> lignes du ticket
-    │   ├── printer.service.ts    # ticket de test / impression du jour
-    │   └── scheduler.service.ts  # planification cron
+    │   ├── tickets.service.ts    # CRUD des tickets + migration schedule/modules à plat -> tickets
+    │   ├── modules.service.ts    # fusion registre + config utilisateur, scopée par ticket
+    │   ├── receipt-builder.ts    # orchestration des modules d'un ticket -> lignes du ticket
+    │   ├── printer.service.ts    # ticket de test / impression d'un ticket
+    │   └── scheduler.service.ts  # une tâche cron par jour activé de chaque ticket
     ├── routes/               # endpoints Fastify (pages + API JSON)
-    ├── views/                 # pages EJS (Imprimante / Planification / Constructeur)
+    ├── views/                 # pages EJS (Tickets / Paramètres / Constructeur d'un ticket)
     └── public/                 # CSS compilé, JS Alpine, Alpine.js vendorisé
 ```
+
+## Tickets multiples
+
+L'application peut gérer plusieurs tickets indépendants (ex: un ticket "Matin" et un ticket "Soir"), chacun avec sa propre planification (`schedule`) et sa propre sélection/configuration de modules (`modules`) — voir `Ticket` dans [src/config/types.ts](src/config/types.ts). La planification est définie **jour par jour** : chaque jour de la semaine a sa propre heure et son propre statut activé/désactivé (ex: 06:00 en semaine, 09:00 le week-end, désactivé le dimanche). L'imprimante physique (`printer`) reste unique et partagée par tous les tickets. La page **Tickets** liste tous les tickets créés (résumé de planification, impression immédiate, suppression) ; chacun ouvre son propre **Constructeur** (`/tickets/:id`) pour la configuration des modules et de la planification (bouton "Paramètres"). Un cron est planifié indépendamment par jour activé de chaque ticket (`src/services/scheduler.service.ts`).
 
 ## Architecture modulaire du ticket
 
@@ -70,7 +75,7 @@ interface ReceiptModule<TConfig, TData> {
   name: string;
   configSchema: ConfigField[];        // décrit le formulaire généré automatiquement dans l'UI
   defaultConfig: TConfig;
-  fetchData(config: TConfig): Promise<TData>;
+  fetchData(config: TConfig, context: FetchContext): Promise<TData>; // context.ticketId : utile aux modules dont l'état doit être scopé par ticket (ex: cache Actualités)
   renderReceipt(data: TData, ctx: ReceiptContext, config: TConfig): void;
 }
 ```
@@ -164,9 +169,9 @@ Sur un autre NAS (Synology, Unraid...), le même principe s'applique : utilisez 
 
 ## Utilisation
 
-1. **Imprimante** : renseignez l'IP et le port de l'imprimante réseau, choisissez le profil de caractères (CP858 recommandé pour les accents français), puis cliquez sur "Tester l'impression". En cas d'erreur `EHOSTUNREACH`, l'imprimante n'est pas à l'adresse indiquée : imprimez sa fiche de statut réseau (bouton poussoir à l'arrière, près du port Ethernet, sur les Epson). Les interfaces réseau Epson (UB-E04...) sortent d'usine en IP fixe `192.168.192.168` ; changez-la via leur page d'administration web (EpsonNet Config → Configuration → TCP/IP → IPv4 Address).
-2. **Planification** : définissez l'heure d'impression quotidienne, ou déclenchez une impression immédiate avec "Imprimer maintenant".
-3. **Constructeur** : activez/désactivez les modules, réordonnez-les (▲/▼), configurez chacun (ville pour la météo, liste d'anniversaires, valeurs boursières suivies...). L'aperçu à droite reflète le rendu réel sur papier.
+1. **Paramètres** : renseignez l'IP et le port de l'imprimante réseau, choisissez le profil de caractères (CP858 recommandé pour les accents français), puis cliquez sur "Tester l'impression". En cas d'erreur `EHOSTUNREACH`, l'imprimante n'est pas à l'adresse indiquée : imprimez sa fiche de statut réseau (bouton poussoir à l'arrière, près du port Ethernet, sur les Epson). Les interfaces réseau Epson (UB-E04...) sortent d'usine en IP fixe `192.168.192.168` ; changez-la via leur page d'administration web (EpsonNet Config → Configuration → TCP/IP → IPv4 Address).
+2. **Tickets** : créez un ou plusieurs tickets, définissez l'heure d'impression quotidienne de chacun (ou déclenchez une impression immédiate avec "Imprimer maintenant"), puis ouvrez son Constructeur.
+3. **Constructeur** (par ticket) : activez/désactivez les modules, réordonnez-les (▲/▼), configurez chacun (ville pour la météo, liste d'anniversaires, valeurs boursières suivies...). L'aperçu à droite reflète le rendu réel sur papier.
 
 ## Notes techniques
 

@@ -102,18 +102,18 @@ async function clearCache() {
 
 describe("newsModule.fetchData : configuration", () => {
   test("lève une erreur explicite si aucun sujet n'est configuré", async () => {
-    await assert.rejects(() => newsModule.fetchData(baseConfig({ topics: [] })), /Configurez au moins un sujet/);
+    await assert.rejects(() => newsModule.fetchData(baseConfig({ topics: [] }), { ticketId: "t1" }), /Configurez au moins un sujet/);
   });
 
   test("lève une erreur explicite si un sujet n'a aucun flux avec une URL", async () => {
     await assert.rejects(
-      () => newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "" }] }] })),
+      () => newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "" }] }] }), { ticketId: "t1" }),
       /Configurez au moins un sujet/,
     );
   });
 
   test("lève une erreur explicite si la clé API est absente", async () => {
-    await assert.rejects(() => newsModule.fetchData(baseConfig({ apiKey: "" })), /clé API Gemini/);
+    await assert.rejects(() => newsModule.fetchData(baseConfig({ apiKey: "" }), { ticketId: "t1" }), /clé API Gemini/);
   });
 });
 
@@ -122,19 +122,19 @@ describe("newsModule.fetchData : cache et isolation des erreurs", () => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Titre", description: "Description", hoursAgo: 1 }]), summary: () => geminiText("Résumé généré.") });
 
-    const data = await newsModule.fetchData(baseConfig());
+    const data = await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.deepEqual(data.topics, [{ label: "Tech", summary: "Résumé généré." }]);
-    assert.equal(configStore.getConfig().state.newsCache?.["Tech"]?.summary, "Résumé généré.");
+    assert.equal(configStore.getConfig().state.newsCache?.["t1:Tech"]?.summary, "Résumé généré.");
   });
 
   test("réutilise le cache du jour sans ré-appeler les flux ni l'IA", async (t) => {
     await clearCache();
     const { fetchMock } = mockNetwork(t, { rss: () => rss([{ title: "T", hoursAgo: 1 }]), summary: () => geminiText("Premier résumé.") });
 
-    await newsModule.fetchData(baseConfig());
+    await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.equal(fetchMock.mock.callCount(), 2);
 
-    const data = await newsModule.fetchData(baseConfig());
+    const data = await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.equal(fetchMock.mock.callCount(), 2);
     assert.equal(data.topics[0].summary, "Premier résumé.");
   });
@@ -152,8 +152,7 @@ describe("newsModule.fetchData : cache et isolation des erreurs", () => {
           { label: "En panne", feeds: [{ url: "https://example.com/panne.xml" }] },
           { label: "OK", feeds: [{ url: "https://example.com/ok.xml" }] },
         ],
-      }),
-    );
+      }), { ticketId: "t1" });
 
     assert.equal(data.topics[0].summary, null);
     assert.match(data.topics[0].error ?? "", /500/);
@@ -164,7 +163,7 @@ describe("newsModule.fetchData : cache et isolation des erreurs", () => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "T", hoursAgo: 1 }]) });
     const topics = ["C", "A", "B"].map((label) => ({ label, feeds: [{ url: `https://example.com/${label}.xml` }] }));
-    const data = await newsModule.fetchData(baseConfig({ topics }));
+    const data = await newsModule.fetchData(baseConfig({ topics }), { ticketId: "t1" });
     assert.deepEqual(data.topics.map((x) => x.label), ["C", "A", "B"]);
   });
 });
@@ -175,40 +174,40 @@ describe("newsModule.fetchData : période de recherche", () => {
   test("par défaut, seuls les articles des dernières 24 h sont retenus", async (t) => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Trop vieux", hoursAgo: 30 }]) });
-    const data = await newsModule.fetchData(baseConfig());
+    const data = await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.equal(data.topics[0].error, empty);
   });
 
   test("retient un article de 20 h avec la période par défaut", async (t) => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Récent", hoursAgo: 20 }]) });
-    const data = await newsModule.fetchData(baseConfig());
+    const data = await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.equal(data.topics[0].summary, "Résumé.");
   });
 
   test("hoursBack élargit la période", async (t) => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Vieux de 30 h", hoursAgo: 30 }]) });
-    const data = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 48, feeds: [{ url: "https://example.com/rss.xml" }] }] }));
+    const data = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 48, feeds: [{ url: "https://example.com/rss.xml" }] }] }), { ticketId: "t1" });
     assert.equal(data.topics[0].summary, "Résumé.");
   });
 
   test("hoursBack est plafonné à 72 h même si l'utilisateur saisit beaucoup plus", async (t) => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Vieux de 80 h", hoursAgo: 80 }]) });
-    const tooOld = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 500, feeds: [{ url: "https://example.com/rss.xml" }] }] }));
+    const tooOld = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 500, feeds: [{ url: "https://example.com/rss.xml" }] }] }), { ticketId: "t1" });
     assert.equal(tooOld.topics[0].error, "aucun article trouvé sur les dernières 72 h");
 
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Vieux de 60 h", hoursAgo: 60 }]) });
-    const ok = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 500, feeds: [{ url: "https://example.com/rss.xml" }] }] }));
+    const ok = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: 500, feeds: [{ url: "https://example.com/rss.xml" }] }] }), { ticketId: "t1" });
     assert.equal(ok.topics[0].summary, "Résumé.");
   });
 
   test("une valeur vide ou nulle de hoursBack retombe sur 24 h", async (t) => {
     await clearCache();
     mockNetwork(t, { rss: () => rss([{ title: "Vieux de 30 h", hoursAgo: 30 }]) });
-    const data = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: "" as unknown as number, feeds: [{ url: "https://example.com/rss.xml" }] }] }));
+    const data = await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", hoursBack: "" as unknown as number, feeds: [{ url: "https://example.com/rss.xml" }] }] }), { ticketId: "t1" });
     assert.equal(data.topics[0].error, empty);
   });
 
@@ -217,7 +216,7 @@ describe("newsModule.fetchData : période de recherche", () => {
     mockNetwork(t, {
       rss: () => xmlResponse(`<rss><channel><item><title>Sans date</title><description>D</description></item></channel></rss>`),
     });
-    const data = await newsModule.fetchData(baseConfig());
+    const data = await newsModule.fetchData(baseConfig(), { ticketId: "t1" });
     assert.equal(data.topics[0].error, empty);
   });
 });
@@ -231,7 +230,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
   test("saute la passe 1 quand il y a autant d'articles que de sujets demandés", async (t) => {
     await clearCache();
     const net = mockNetwork(t, { rss: () => rss(fiveArticles.slice(0, 2)) });
-    await newsModule.fetchData(twoStories(2));
+    await newsModule.fetchData(twoStories(2), { ticketId: "t1" });
     assert.equal(net.selectionPrompts().length, 0);
     assert.equal(net.summaryPrompts().length, 1);
   });
@@ -239,7 +238,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
   test("passe 1 : n'envoie que id, source et titre, jamais les descriptions", async (t) => {
     await clearCache();
     const net = mockNetwork(t, { rss: () => rss(fiveArticles), selection: () => geminiSelection([{ ids: ["a1"], score: 0.9 }]) });
-    await newsModule.fetchData(twoStories());
+    await newsModule.fetchData(twoStories(), { ticketId: "t1" });
 
     const [prompt] = net.selectionPrompts();
     assert.match(prompt, /a1 \| example\.com \| Article 1/);
@@ -261,8 +260,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
         ]),
     });
     await newsModule.fetchData(
-      baseConfig({ topics: [{ label: "Tech", storiesCount: 2, feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }),
-    );
+      baseConfig({ topics: [{ label: "Tech", storiesCount: 2, feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }), { ticketId: "t1" });
 
     const [prompt] = net.summaryPrompts();
     const first = prompt.indexOf("Histoire 1 (score d'importance 0.90)");
@@ -284,7 +282,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
           { ids: ["a2", "a4"], score: 0.7 },
         ]),
     });
-    await newsModule.fetchData(twoStories());
+    await newsModule.fetchData(twoStories(), { ticketId: "t1" });
 
     const [prompt] = net.summaryPrompts();
     assert.equal(prompt.match(/Article 2/g)?.length, 1);
@@ -298,7 +296,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
       rss: (url) => rss([{ title: `Version ${url.split("//")[1].split(".")[0]}`, description: "Description", hoursAgo: 1 }]),
       selection: () => geminiSelection([{ ids: ["a1", "a2", "a3", "a4", "a5", "a6"], score: 0.9 }]),
     });
-    await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", storiesCount: 1, feeds: hosts.map((h) => ({ url: `https://${h}.example.com/rss.xml` })) }] }));
+    await newsModule.fetchData(baseConfig({ topics: [{ label: "Tech", storiesCount: 1, feeds: hosts.map((h) => ({ url: `https://${h}.example.com/rss.xml` })) }] }), { ticketId: "t1" });
 
     const [prompt] = net.summaryPrompts();
     assert.equal(prompt.match(/^- \[/gm)?.length, 4);
@@ -308,7 +306,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
     await clearCache();
     const many = Array.from({ length: 250 }, (_, i) => ({ title: `Titre ${i + 1}`, hoursAgo: 0.01 + i * 0.05 }));
     const net = mockNetwork(t, { rss: () => rss(many), selection: () => geminiSelection([{ ids: ["a1"], score: 0.9 }]) });
-    await newsModule.fetchData(twoStories());
+    await newsModule.fetchData(twoStories(), { ticketId: "t1" });
 
     const [prompt] = net.selectionPrompts();
     assert.ok(prompt.includes("a200 | example.com | Titre 200"));
@@ -323,8 +321,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
     await newsModule.fetchData(
       baseConfig({
         topics: [{ label: "Tech", storiesCount: 5, feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }],
-      }),
-    );
+      }), { ticketId: "t1" });
     assert.equal(net.selectionPrompts().length, 0); // un seul candidat restant : passe 1 inutile
     assert.equal(net.summaryPrompts()[0].match(/Même titre/g)?.length, 1);
   });
@@ -336,8 +333,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
       selection: () => geminiText("ceci n'est pas du JSON"),
     });
     const data = await newsModule.fetchData(
-      baseConfig({ topics: [{ label: "Tech", storiesCount: 2, feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }),
-    );
+      baseConfig({ topics: [{ label: "Tech", storiesCount: 2, feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }), { ticketId: "t1" });
 
     assert.equal(net.selectionPrompts().length, 2); // 1 essai + 1 nouvelle tentative
     assert.equal(data.topics[0].summary, "Résumé."); // le ticket est produit malgré tout
@@ -349,7 +345,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
   test("repli si l'appel de la passe 1 échoue", async (t) => {
     await clearCache();
     const net = mockNetwork(t, { rss: () => rss(fiveArticles), selection: () => jsonResponse({ error: { message: "bad" } }, 400) });
-    const data = await newsModule.fetchData(twoStories());
+    const data = await newsModule.fetchData(twoStories(), { ticketId: "t1" });
     assert.equal(data.topics[0].summary, "Résumé.");
     assert.ok(net.summaryPrompts()[0].includes("Article 1"));
   });
@@ -361,8 +357,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
       summary: () => geminiText("Résumé fusionné."),
     });
     const data = await newsModule.fetchData(
-      baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }),
-    );
+      baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "https://a.example.com/rss.xml" }, { url: "https://b.example.com/rss.xml" }] }] }), { ticketId: "t1" });
 
     assert.equal(data.topics.length, 1);
     assert.equal(data.topics[0].summary, "Résumé fusionné.");
@@ -377,8 +372,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
       summary: () => geminiText("Résumé partiel."),
     });
     const data = await newsModule.fetchData(
-      baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "https://example.com/panne.xml" }, { url: "https://example.com/ok.xml" }] }] }),
-    );
+      baseConfig({ topics: [{ label: "Tech", feeds: [{ url: "https://example.com/panne.xml" }, { url: "https://example.com/ok.xml" }] }] }), { ticketId: "t1" });
     assert.equal(data.topics[0].summary, "Résumé partiel.");
   });
 
@@ -391,8 +385,7 @@ describe("newsModule.fetchData : passe 1 (tri) et passe 2 (synthèse)", () => {
           { label: "Perso", prompt: "Consigne spéciale {sujet} sur {nombre_sujets} histoire(s)", feeds: [{ url: "https://example.com/a.xml" }] },
           { label: "Defaut", feeds: [{ url: "https://example.com/b.xml" }] },
         ],
-      }),
-    );
+      }), { ticketId: "t1" });
 
     const prompts = net.summaryPrompts();
     assert.equal(prompts.length, 2);

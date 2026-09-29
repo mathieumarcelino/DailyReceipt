@@ -7,7 +7,7 @@ import path from "node:path";
 // `modules.service.ts` importe le singleton `configStore`, qui lit le fichier de config dès sa
 // construction. On écrit une config "legacy" sur disque puis on pointe `CONFIG_PATH` dessus avant
 // tout import, pour que la migration testée s'exécute sur des données représentatives d'un vrai
-// fichier utilisateur pré-existant plutôt que sur un état vide.
+// fichier utilisateur pré-existant (à plat, avant le passage au multi-ticket) plutôt que sur un état vide.
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dailyreceipt-modules-service-test-"));
 const tmpConfigPath = path.join(tmpDir, "config.json");
 
@@ -26,20 +26,23 @@ fs.writeFileSync(
 );
 process.env.CONFIG_PATH = tmpConfigPath;
 
-let configStore: typeof import("../../src/config/store").configStore;
+let listTickets: typeof import("../../src/services/tickets.service").listTickets;
 let listModules: typeof import("../../src/services/modules.service").listModules;
 
 before(async () => {
-  ({ configStore } = await import("../../src/config/store"));
+  ({ listTickets } = await import("../../src/services/tickets.service"));
   ({ listModules } = await import("../../src/services/modules.service"));
 });
 
+async function newsConfig(): Promise<any> {
+  const [ticket] = await listTickets(); // déclenche la migration schedule+modules -> ticket unique
+  const modules = await listModules(ticket.id); // déclenche ensureModuleInstances() -> migrations, dont celle des flux Actualités
+  return modules.find((m) => m.id === "news")?.config;
+}
+
 describe("migration : ancienne config Actualités (feeds à plat) -> sujets groupés (topics)", () => {
   test("regroupe les anciens flux par label en sujets, sans perdre d'URL", async () => {
-    await listModules(); // déclenche ensureInstances() -> les migrations, dont celle des flux Actualités
-
-    const newsInst = configStore.getConfig().modules.find((m) => m.id === "news");
-    const config = newsInst?.config as any;
+    const config = await newsConfig();
 
     assert.equal(config.feeds, undefined);
     assert.equal(config.topics.length, 2);
@@ -60,11 +63,8 @@ describe("migration : ancienne config Actualités (feeds à plat) -> sujets grou
   });
 
   test("est idempotente : un second appel ne modifie plus rien", async () => {
-    await listModules();
-    const before = JSON.stringify(configStore.getConfig().modules.find((m) => m.id === "news")?.config);
-
-    await listModules();
-    const after = JSON.stringify(configStore.getConfig().modules.find((m) => m.id === "news")?.config);
+    const before = JSON.stringify(await newsConfig());
+    const after = JSON.stringify(await newsConfig());
 
     assert.equal(before, after);
   });

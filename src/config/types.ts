@@ -11,10 +11,22 @@ export interface PrinterConfig {
   printWidthPx: 384 | 576;
 }
 
-export interface ScheduleConfig {
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export const WEEKDAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+export interface DaySchedule {
+  enabled: boolean;
   /** Heure locale au format "HH:MM". */
   time: string;
-  enabled: boolean;
+}
+
+/** Planification d'un ticket, jour par jour (heure et activation indépendantes par jour de la semaine). */
+export type ScheduleConfig = Record<Weekday, DaySchedule>;
+
+/** Même heure/activation répétée sur les 7 jours — point de départ pratique pour un nouveau ticket. */
+export function createSchedule(time: string, enabled: boolean): ScheduleConfig {
+  return Object.fromEntries(WEEKDAYS.map((day) => [day, { time, enabled }])) as ScheduleConfig;
 }
 
 export interface ModuleInstanceConfig {
@@ -36,16 +48,28 @@ export interface NewsCacheEntry {
   cachedAt: string;
 }
 
-export interface AppState {
+/**
+ * Un ticket = une planification + une sélection de modules indépendantes. L'app peut imprimer
+ * plusieurs tickets, chacun à sa propre heure (ex: un ticket "Matin" et un ticket "Soir").
+ */
+export interface Ticket {
+  id: string;
+  name: string;
+  schedule: ScheduleConfig;
+  modules: ModuleInstanceConfig[];
+  /** Statut de la dernière impression de CE ticket (pas global : chaque ticket a son propre historique). */
   lastRun?: LastRunState;
-  /** Résumés IA du module Actualités, mis en cache par URL de flux jusqu'au lendemain. */
+}
+
+export interface AppState {
+  /** Résumés IA du module Actualités, mis en cache par sujet jusqu'au lendemain. Clé : "<ticketId>:<label du sujet>", pour qu'un même libellé de sujet dans deux tickets différents ne partage jamais son cache. */
   newsCache?: Record<string, NewsCacheEntry>;
 }
 
 export interface AppConfig {
+  /** Imprimante physique : un seul appareil réseau, partagé par tous les tickets. */
   printer: PrinterConfig;
-  schedule: ScheduleConfig;
-  modules: ModuleInstanceConfig[];
+  tickets: Ticket[];
   state: AppState;
 }
 
@@ -57,10 +81,6 @@ export const DEFAULT_CONFIG: AppConfig = {
     columns: 48,
     printWidthPx: 576,
   },
-  schedule: {
-    time: "07:30",
-    enabled: true,
-  },
-  modules: [],
+  tickets: [],
   state: {},
 };

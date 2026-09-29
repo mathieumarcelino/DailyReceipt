@@ -4,9 +4,58 @@
 <script src="/public/vendor/leaflet/leaflet.js"></script>
 <script src="/public/js/builder.js"></script>
 
-<div x-data="builderPage()" x-init="init()">
-  <h1 class="text-2xl font-bold mb-1">Constructeur de ticket</h1>
-  <p class="text-gray-500 dark:text-gray-400 mb-6">Activez, ordonnez et configurez les modules affichés sur le ticket. L'aperçu à droite reflète le rendu réel sur papier.</p>
+<div x-data="builderPage('<%= ticketId %>', <%= JSON.stringify(ticketName) %>, <%= JSON.stringify(ticketSchedule) %>)" x-init="init()">
+  <a href="/tickets" class="text-sm text-accent-600 hover:underline">← Retour aux tickets</a>
+
+  <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mt-2 mb-1">
+    <h1 class="text-2xl font-bold min-w-0 truncate" x-text="'Constructeur — ' + ticket.name"></h1>
+    <button type="button" class="btn-secondary shrink-0" x-show="!ticket.editing" @click="startEditTicket()">Paramètres</button>
+  </div>
+
+  <p class="text-gray-500 dark:text-gray-400 mb-1" x-show="!ticket.editing" x-text="scheduleSummaryText()"></p>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Activez, ordonnez et configurez les modules affichés sur ce ticket. L'aperçu à droite reflète le rendu réel sur papier.</p>
+
+  <div class="card p-4 mb-6" x-show="ticket.editing" x-cloak>
+    <div class="mb-4">
+      <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Nom du ticket</label>
+      <input
+        type="text"
+        class="field-input max-w-sm"
+        x-model="ticket.draftName"
+        @keydown.enter.prevent="saveTicketSettings()"
+        @keydown.escape="cancelEditTicket()"
+      />
+    </div>
+
+    <div>
+      <span class="field-label">Planification</span>
+      <div class="space-y-1.5" x-show="ticket.draftSchedule">
+        <template x-for="day in weekdays" :key="day.key">
+          <div class="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+            <label class="flex items-center gap-3 cursor-pointer w-32 shrink-0">
+              <input type="checkbox" x-model="ticket.draftSchedule[day.key].enabled" class="sr-only peer" />
+              <div class="w-11 h-6 rounded-full bg-gray-300 dark:bg-gray-700 peer-checked:bg-accent-600 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></div>
+              <span class="text-sm font-medium" x-text="day.label"></span>
+            </label>
+            <input
+              type="time"
+              class="field-input !w-auto"
+              x-model="ticket.draftSchedule[day.key].time"
+              :disabled="!ticket.draftSchedule[day.key].enabled"
+            />
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button type="button" class="btn-primary" :disabled="ticket.saving || !ticket.draftName.trim()" @click="saveTicketSettings()">
+        <span x-show="!ticket.saving">Enregistrer</span>
+        <span x-show="ticket.saving" x-cloak>Enregistrement...</span>
+      </button>
+      <button type="button" class="btn-secondary" :disabled="ticket.saving" @click="cancelEditTicket()">Annuler</button>
+    </div>
+  </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-6 items-start">
     <!-- Liste des modules -->

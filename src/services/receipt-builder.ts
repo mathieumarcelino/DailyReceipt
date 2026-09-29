@@ -3,7 +3,7 @@ import { getModule } from "../modules/registry";
 import { listModules } from "./modules.service";
 
 /**
- * Construit la liste des lignes du ticket du jour en exécutant chaque module
+ * Construit la liste des lignes d'un ticket (identifié par `ticketId`) en exécutant chaque module
  * actif dans l'ordre configuré. Une erreur d'un module (API météo down, etc.)
  * n'interrompt pas les autres : elle est affichée comme une ligne d'avertissement.
  *
@@ -14,8 +14,8 @@ import { listModules } from "./modules.service";
  * entre l'en-tête et le corps ainsi qu'entre le corps et le pied de page, "-"
  * entre les autres modules, et aucun après le dernier module non vide.
  */
-export async function buildReceiptLines(columns: number, widthPx: number): Promise<ReceiptLine[]> {
-  const modules = await listModules();
+export async function buildReceiptLines(ticketId: string, columns: number, widthPx: number): Promise<ReceiptLine[]> {
+  const modules = await listModules(ticketId);
   const enabled = modules.filter((m) => m.enabled).sort((a, b) => a.order - b.order);
 
   const segments: { id: string; lines: ReceiptLine[] }[] = [];
@@ -27,7 +27,7 @@ export async function buildReceiptLines(columns: number, widthPx: number): Promi
     const moduleCtx = new ReceiptBuilder(columns, widthPx);
     moduleCtx.currentModuleId = view.id;
     try {
-      const data = await mod.fetchData(view.config);
+      const data = await mod.fetchData(view.config, { ticketId });
       mod.renderReceipt(data, moduleCtx, view.config);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

@@ -44,38 +44,38 @@ describe("cryptoModule.fetchData", () => {
   test("associe chaque actif à sa cotation EUR et sa variation 24h", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({ bitcoin: { eur: 65000, eur_24h_change: -1.2 } }));
 
-    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }] });
+    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }] }, { ticketId: "t1" });
     assert.deepEqual(data.quotes, [{ label: "Bitcoin", price: 65000, currency: "€", changePct: -1.2 }]);
   });
 
   test("le libellé manuel (label) prime sur le nom CoinGecko", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({ bitcoin: { eur: 65000, eur_24h_change: 0 } }));
-    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate(), label: "Mon label" }] });
+    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate(), label: "Mon label" }] }, { ticketId: "t1" });
     assert.equal(data.quotes[0].label, "Mon label");
   });
 
   test("dégrade en erreur pour un actif absent de la réponse groupée, sans jeter", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({})); // bitcoin absent de la réponse
-    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }] });
+    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }] }, { ticketId: "t1" });
     assert.equal(data.quotes[0].price, null);
     assert.equal(data.quotes[0].error, "non disponible");
   });
 
   test("dégrade toutes les cotations en erreur si l'appel groupé échoue, sans jeter", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({}, 500));
-    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }, { crypto: candidate({ id: "ethereum", name: "Ethereum" }) }] });
+    const data = await cryptoModule.fetchData({ assets: [{ crypto: candidate() }, { crypto: candidate({ id: "ethereum", name: "Ethereum" }) }] }, { ticketId: "t1" });
     assert.ok(data.quotes.every((q) => q.price === null && q.error === "non disponible"));
   });
 
   test("n'effectue aucun appel réseau si la liste d'actifs est vide", async (t) => {
     const fetchMock = t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({}));
-    const data = await cryptoModule.fetchData({ assets: [] });
+    const data = await cryptoModule.fetchData({ assets: [] }, { ticketId: "t1" });
     assert.deepEqual(data.quotes, []);
     assert.equal(fetchMock.mock.callCount(), 0);
   });
 
   test("ignore les entrées sans crypto sélectionnée", async () => {
-    const data = await cryptoModule.fetchData({ assets: [{ crypto: null }] });
+    const data = await cryptoModule.fetchData({ assets: [{ crypto: null }] }, { ticketId: "t1" });
     assert.deepEqual(data.quotes, []);
   });
 });

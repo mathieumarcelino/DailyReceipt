@@ -76,13 +76,14 @@ const newsModule: ReceiptModule<NewsConfig, NewsData> = {
       label: "Cache des résumés",
       type: "action",
       buttonLabel: "Vider le cache (forcer un nouveau résumé)",
-      endpoint: "/api/news/clear-cache",
+      endpoint: "/news/clear-cache", // relatif : préfixé par `/api/tickets/:ticketId` côté builder.js, ce module n'a pas connaissance de son ticket
+
       help: "Les résumés sont conservés jusqu'au lendemain pour économiser les appels à l'IA ; utile pour tester une modification immédiatement.",
     },
   ],
   defaultConfig: { topics: [], summaryTargetLines: 20, apiKey: "", model: DEFAULT_MODEL },
 
-  async fetchData(config) {
+  async fetchData(config, { ticketId }) {
     const topics = (config.topics ?? [])
       .filter((t) => t?.label?.trim())
       .map((t) => ({ ...t, feeds: (t.feeds ?? []).filter((f) => f?.url?.trim()) }))
@@ -99,7 +100,7 @@ const newsModule: ReceiptModule<NewsConfig, NewsData> = {
     const { columns } = configStore.getConfig().printer;
     const maxChars = columns * Math.max(1, config.summaryTargetLines || 20);
 
-    const results = await Promise.all(topics.map((topic) => summarizeTopic(topic, config, maxChars)));
+    const results = await Promise.all(topics.map((topic) => summarizeTopic(ticketId, topic, config, maxChars)));
     return { topics: results };
   },
 
@@ -141,16 +142,19 @@ interface Story {
 }
 
 /**
- * Résume un sujet en deux passes, en réutilisant le cache du jour s'il existe :
+ * Résume un sujet en deux passes, en réutilisant le cache du jour s'il existe (scopé par ticket, voir `cacheKey` ci-dessous) :
  * 1. tous les articles de la période sont réduits à id + source + titre, et l'IA regroupe les doublons,
  *    note l'impact et retient les `storiesCount` meilleures histoires (repli déterministe si elle échoue) ;
  * 2. les articles complets de ces histoires (toutes les versions, dans la limite de
  *    MAX_VERSIONS_PER_STORY) sont envoyés pour la synthèse finale, dans l'ordre des scores.
  * Chaque flux est interrogé indépendamment : un flux en panne ne prive pas le sujet des autres.
  */
-async function summarizeTopic(topic: TopicConfig, config: NewsConfig, maxChars: number): Promise<TopicResult> {
+async function summarizeTopic(ticketId: string, topic: TopicConfig, config: NewsConfig, maxChars: number): Promise<TopicResult> {
   const { label, feeds } = topic;
-  const cached = configStore.getConfig().state.newsCache?.[label];
+  // Scopé par ticket : deux tickets différents peuvent chacun avoir un sujet nommé pareil (ex: "Tech")
+  // sur des flux différents, et ne doivent jamais partager le même résumé en cache.
+  const cacheKey = `${ticketId}:${label}`;
+  const cached = configStore.getConfig().state.newsCache?.[cacheKey];
   if (cached && isSameLocalDay(new Date(cached.cachedAt), new Date())) {
     return { label, summary: cached.summary };
   }
@@ -207,7 +211,7 @@ async function summarizeTopic(topic: TopicConfig, config: NewsConfig, maxChars: 
     });
 
     await configStore.updateConfig((draft) => {
-      draft.state.newsCache = { ...(draft.state.newsCache ?? {}), [label]: { summary, cachedAt: new Date().toISOString() } };
+      draft.state.newsCache = { ...(draft.state.newsCache ?? {}), [cacheKey]: { summary, cachedAt: new Date().toISOString() } };
     });
 
     return { label, summary };

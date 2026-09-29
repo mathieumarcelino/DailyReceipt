@@ -126,6 +126,13 @@ export interface ReceiptContext {
  * ne nécessite que la création d'un fichier implémentant cette interface et son
  * enregistrement dans src/modules/registry.ts.
  */
+
+/** Contexte d'exécution transmis à `fetchData()`, en plus de la config du module. */
+export interface FetchContext {
+  /** Ticket pour lequel ce module s'exécute — utile à un module qui a besoin d'isoler un état partagé par ticket (ex: le cache du module Actualités, scopé par ticket pour qu'un même libellé de sujet dans deux tickets différents ne partage pas son résumé). La plupart des modules n'en ont pas besoin et peuvent omettre ce paramètre dans leur propre signature. */
+  ticketId: string;
+}
+
 export interface ReceiptModule<TConfig = Record<string, unknown>, TData = unknown> {
   /** Identifiant unique et stable (utilisé comme clé de stockage). */
   id: string;
@@ -140,7 +147,7 @@ export interface ReceiptModule<TConfig = Record<string, unknown>, TData = unknow
   /** Valeurs par défaut appliquées à la première activation du module. */
   defaultConfig: TConfig;
   /** Récupère les données nécessaires au rendu (météo, anniversaires, cours...). */
-  fetchData(config: TConfig): Promise<TData>;
+  fetchData(config: TConfig, context: FetchContext): Promise<TData>;
   /** Écrit les lignes du ticket à partir des données récupérées. */
   renderReceipt(data: TData, ctx: ReceiptContext, config: TConfig): void;
 }

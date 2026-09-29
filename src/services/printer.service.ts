@@ -34,22 +34,24 @@ export async function printTestTicket(target: PrinterConfig): Promise<void> {
   await sendToPrinter(buffer, { host: target.host, port: target.port });
 }
 
-/** Construit le ticket complet du jour à partir des modules actifs et l'imprime. */
-export async function printDailyReceipt(): Promise<void> {
+/** Construit le ticket complet d'un ticket à partir de ses modules actifs et l'imprime (l'imprimante elle-même reste globale, partagée par tous les tickets). */
+export async function printTicket(ticketId: string): Promise<void> {
   const cfg = configStore.getConfig();
 
   try {
-    const lines = await buildReceiptLines(cfg.printer.columns, cfg.printer.printWidthPx);
+    const lines = await buildReceiptLines(ticketId, cfg.printer.columns, cfg.printer.printWidthPx);
     const buffer = encodeReceipt(lines, cfg.printer.profile);
     await sendToPrinter(buffer, { host: cfg.printer.host, port: cfg.printer.port });
 
     await configStore.updateConfig((draft) => {
-      draft.state.lastRun = { timestamp: new Date().toISOString(), status: "success" };
+      const ticket = draft.tickets.find((t) => t.id === ticketId);
+      if (ticket) ticket.lastRun = { timestamp: new Date().toISOString(), status: "success" };
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await configStore.updateConfig((draft) => {
-      draft.state.lastRun = { timestamp: new Date().toISOString(), status: "error", message };
+      const ticket = draft.tickets.find((t) => t.id === ticketId);
+      if (ticket) ticket.lastRun = { timestamp: new Date().toISOString(), status: "error", message };
     });
     throw err;
   }

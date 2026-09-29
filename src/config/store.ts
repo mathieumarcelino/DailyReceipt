@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { AppConfig, DEFAULT_CONFIG } from "./types";
+import { randomUUID } from "node:crypto";
+import { AppConfig, DEFAULT_CONFIG, createSchedule } from "./types";
 
 const DEFAULT_CONFIG_PATH = "/data/config.json";
 const LOCAL_FALLBACK_PATH = path.join(process.cwd(), "data", "config.json");
@@ -47,19 +48,32 @@ class ConfigStore {
     fs.mkdirSync(dir, { recursive: true });
 
     if (!fs.existsSync(configPath)) {
-      const initial = structuredClone(DEFAULT_CONFIG);
+      // Amorcé une seule fois, ici, à la toute première création du fichier — pas paresseusement à
+      // chaque accès (cf. tickets.service.ts) : sinon un utilisateur qui supprime volontairement son
+      // dernier ticket (état vide autorisé) en verrait un nouveau réapparaître au chargement suivant.
+      const initial: AppConfig = {
+        ...structuredClone(DEFAULT_CONFIG),
+        tickets: [{ id: randomUUID(), name: "Ticket du matin", schedule: createSchedule("07:30", true), modules: [] }],
+      };
       fs.writeFileSync(configPath, JSON.stringify(initial, null, 2), "utf-8");
       return initial;
     }
 
     const raw = fs.readFileSync(configPath, "utf-8");
     const parsed = raw.trim().length > 0 ? JSON.parse(raw) : {};
-    return {
+
+    // `schedule`/`modules` à plat (format avant la migration multi-tickets, voir tickets.service.ts)
+    // sont volontairement laissés passer tels quels s'ils existent, plutôt que d'être ignorés ici :
+    // les perdre à la lecture effacerait silencieusement la config réelle de l'utilisateur (planning,
+    // modules déjà configurés) avant même qu'une migration n'ait la chance de les reprendre.
+    const merged: any = {
       printer: { ...DEFAULT_CONFIG.printer, ...parsed.printer },
-      schedule: { ...DEFAULT_CONFIG.schedule, ...parsed.schedule },
-      modules: Array.isArray(parsed.modules) ? parsed.modules : [],
+      tickets: Array.isArray(parsed.tickets) ? parsed.tickets : [],
       state: { ...DEFAULT_CONFIG.state, ...parsed.state },
     };
+    if (parsed.schedule !== undefined) merged.schedule = parsed.schedule;
+    if (parsed.modules !== undefined) merged.modules = parsed.modules;
+    return merged;
   }
 
   getConfig(): AppConfig {

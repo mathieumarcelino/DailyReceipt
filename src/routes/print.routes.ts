@@ -4,6 +4,7 @@ import type { PrinterProfile } from "../config/types";
 import { printTestTicket } from "../services/printer.service";
 import { triggerNow } from "../services/scheduler.service";
 import { buildReceiptLines } from "../services/receipt-builder";
+import { getTicket } from "../services/tickets.service";
 
 const VALID_PROFILES: PrinterProfile[] = ["CP437", "CP858", "CP1252"];
 
@@ -32,19 +33,26 @@ export default async function printRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  app.post("/api/print/now", async (_req, reply) => {
+  app.post<{ Params: { id: string } }>("/api/tickets/:id/print", async (req, reply) => {
+    const { id } = req.params;
+    if (!(await getTicket(id))) return reply.code(404).send({ error: `Ticket inconnu : ${id}` });
+
+    const lastRunOf = async () => (await getTicket(id))?.lastRun;
     try {
-      await triggerNow();
-      return { ok: true, lastRun: configStore.getConfig().state.lastRun };
+      await triggerNow(id);
+      return { ok: true, lastRun: await lastRunOf() };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return reply.code(502).send({ error: message, lastRun: configStore.getConfig().state.lastRun });
+      return reply.code(502).send({ error: message, lastRun: await lastRunOf() });
     }
   });
 
-  app.get("/api/receipt/preview", async () => {
+  app.get<{ Params: { id: string } }>("/api/tickets/:id/receipt/preview", async (req, reply) => {
+    const { id } = req.params;
+    if (!(await getTicket(id))) return reply.code(404).send({ error: `Ticket inconnu : ${id}` });
+
     const { columns, printWidthPx } = configStore.getConfig().printer;
-    const lines = await buildReceiptLines(columns, printWidthPx);
+    const lines = await buildReceiptLines(id, columns, printWidthPx);
     return { columns, lines };
   });
 }

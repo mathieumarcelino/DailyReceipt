@@ -168,8 +168,18 @@ function coordinatesPickerState(mod, field) {
 
 const MAX_IMAGE_BYTES = 500 * 1024;
 
-function builderPage() {
+function builderPage(ticketId, ticketName, ticketSchedule) {
   return {
+    ticketId,
+    weekdays: WEEKDAYS,
+    ticket: {
+      name: ticketName,
+      schedule: ticketSchedule,
+      editing: false,
+      saving: false,
+      draftName: "",
+      draftSchedule: null,
+    },
     modules: [],
     preview: { columns: 48, lines: [] },
     expandedId: null,
@@ -184,10 +194,44 @@ function builderPage() {
       await this.loadPreview();
     },
 
+    /** Passe sur une copie de travail (draft*) : "Annuler" n'a alors rien à défaire. */
+    startEditTicket() {
+      this.ticket.draftName = this.ticket.name;
+      this.ticket.draftSchedule = JSON.parse(JSON.stringify(this.ticket.schedule));
+      this.ticket.editing = true;
+    },
+
+    cancelEditTicket() {
+      this.ticket.editing = false;
+    },
+
+    scheduleSummaryText() {
+      return scheduleSummary(this.ticket.schedule);
+    },
+
+    async saveTicketSettings() {
+      if (!this.ticket.draftName.trim()) return;
+      this.ticket.saving = true;
+      try {
+        const updated = await api(`/api/tickets/${this.ticketId}`, {
+          method: "PUT",
+          body: { name: this.ticket.draftName, schedule: this.ticket.draftSchedule },
+        });
+        this.ticket.name = updated.name;
+        this.ticket.schedule = updated.schedule;
+        this.ticket.editing = false;
+        this.$dispatch("toast", { message: "Ticket mis à jour.", type: "success" });
+      } catch (e) {
+        this.$dispatch("toast", { message: e.message, type: "error" });
+      } finally {
+        this.ticket.saving = false;
+      }
+    },
+
     async loadModules() {
       this.loading = true;
       try {
-        this.modules = await api("/api/modules");
+        this.modules = await api(`/api/tickets/${this.ticketId}/modules`);
       } catch (e) {
         this.$dispatch("toast", { message: e.message, type: "error" });
       } finally {
@@ -198,7 +242,7 @@ function builderPage() {
     async loadPreview() {
       this.previewLoading = true;
       try {
-        this.preview = await api("/api/receipt/preview");
+        this.preview = await api(`/api/tickets/${this.ticketId}/receipt/preview`);
       } catch (e) {
         this.$dispatch("toast", { message: `Aperçu indisponible : ${e.message}`, type: "error" });
       } finally {
@@ -212,7 +256,7 @@ function builderPage() {
 
     async setEnabled(mod) {
       try {
-        await api(`/api/modules/${mod.id}`, { method: "PUT", body: { enabled: mod.enabled } });
+        await api(`/api/tickets/${this.ticketId}/modules/${mod.id}`, { method: "PUT", body: { enabled: mod.enabled } });
         this.$dispatch("toast", { message: `${mod.name} ${mod.enabled ? "activé" : "désactivé"}.`, type: "success" });
         await this.loadPreview();
       } catch (e) {
@@ -224,7 +268,7 @@ function builderPage() {
     async saveConfig(mod) {
       this.savingId = mod.id;
       try {
-        const updated = await api(`/api/modules/${mod.id}`, { method: "PUT", body: { config: mod.config } });
+        const updated = await api(`/api/tickets/${this.ticketId}/modules/${mod.id}`, { method: "PUT", body: { config: mod.config } });
         Object.assign(mod, updated);
         this.$dispatch("toast", { message: "Configuration enregistrée.", type: "success" });
         this.expandedId = null;
@@ -245,7 +289,7 @@ function builderPage() {
       this.modules = arr;
 
       try {
-        this.modules = await api("/api/modules/order", { method: "PUT", body: { order: arr.map((m) => m.id) } });
+        this.modules = await api(`/api/tickets/${this.ticketId}/modules/order`, { method: "PUT", body: { order: arr.map((m) => m.id) } });
         await this.loadPreview();
       } catch (e) {
         this.$dispatch("toast", { message: e.message, type: "error" });
@@ -331,7 +375,7 @@ function builderPage() {
 
     async runModuleAction(endpoint, method) {
       try {
-        await api(endpoint, { method });
+        await api(`/api/tickets/${this.ticketId}${endpoint}`, { method });
         this.$dispatch("toast", { message: "Action effectuée.", type: "success" });
       } catch (e) {
         this.$dispatch("toast", { message: e.message, type: "error" });

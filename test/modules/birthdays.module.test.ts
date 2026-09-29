@@ -21,7 +21,7 @@ describe("birthdaysModule.fetchData", () => {
         { name: "Alice", date: today },
         { name: "Bob", date: other },
       ],
-    });
+    }, { ticketId: "t1" });
     assert.deepEqual(data.todayNames, ["Alice"]);
   });
 
@@ -33,23 +33,23 @@ describe("birthdaysModule.fetchData", () => {
       t.skip("nécessite un jour et un mois du calendrier tous deux < 10 pour tester une forme non paddée");
       return;
     }
-    const data = await birthdaysModule.fetchData({ people: [{ name: "Alice", date: `${now.getDate()}/${now.getMonth() + 1}` }] });
+    const data = await birthdaysModule.fetchData({ people: [{ name: "Alice", date: `${now.getDate()}/${now.getMonth() + 1}` }] }, { ticketId: "t1" });
     assert.deepEqual(data.todayNames, ["Alice"]);
   });
 
   test("ignore silencieusement une date au format invalide", async () => {
-    const data = await birthdaysModule.fetchData({ people: [{ name: "Alice", date: "pas une date" }] });
+    const data = await birthdaysModule.fetchData({ people: [{ name: "Alice", date: "pas une date" }] }, { ticketId: "t1" });
     assert.deepEqual(data.todayNames, []);
   });
 
   test("ignore une entrée sans nom", async () => {
     const { today } = todayAndOtherDayMonth();
-    const data = await birthdaysModule.fetchData({ people: [{ name: "  ", date: today }] });
+    const data = await birthdaysModule.fetchData({ people: [{ name: "  ", date: today }] }, { ticketId: "t1" });
     assert.deepEqual(data.todayNames, []);
   });
 
   test("liste vide si aucune personne configurée", async () => {
-    const data = await birthdaysModule.fetchData({ people: [] });
+    const data = await birthdaysModule.fetchData({ people: [] }, { ticketId: "t1" });
     assert.deepEqual(data.todayNames, []);
   });
 });

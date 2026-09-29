@@ -6,19 +6,19 @@ import { QUOTES } from "../../src/lib/quotes";
 
 describe("footerModule.fetchData", () => {
   test("tire une citation de la liste locale quand showQuote est activé", async () => {
-    const data = await footerModule.fetchData({ showQuote: true });
+    const data = await footerModule.fetchData({ showQuote: true }, { ticketId: "t1" });
     assert.ok(data.quote);
     assert.ok(QUOTES.includes(data.quote));
   });
 
   test("ne renvoie aucune citation quand showQuote est désactivé", async () => {
-    const data = await footerModule.fetchData({ showQuote: false });
+    const data = await footerModule.fetchData({ showQuote: false }, { ticketId: "t1" });
     assert.equal(data.quote, null);
   });
 
   test("horodate au moment de l'appel", async () => {
     const before = Date.now();
-    const data = await footerModule.fetchData({ showQuote: false });
+    const data = await footerModule.fetchData({ showQuote: false }, { ticketId: "t1" });
     assert.ok(data.printedAt.getTime() >= before && data.printedAt.getTime() <= Date.now());
   });
 });

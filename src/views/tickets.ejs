@@ -1,0 +1,86 @@
+<%- include('partials/head', { active }) %>
+
+<script src="/public/js/tickets.js"></script>
+
+<div x-data="ticketsPage()" x-init="init()">
+  <h1 class="text-2xl font-bold mb-1">Tickets</h1>
+  <p class="text-gray-500 dark:text-gray-400 mb-6">Créez plusieurs tickets indépendants, chacun avec sa propre heure d'impression et sa propre sélection de modules.</p>
+
+  <div class="card p-4 mb-6">
+    <label class="field-label" for="newTicketName">Nouveau ticket</label>
+    <div class="flex flex-wrap gap-2">
+      <input
+        id="newTicketName"
+        type="text"
+        class="field-input flex-1 min-w-[10rem]"
+        x-model="newTicketName"
+        placeholder="Nom du ticket (ex: Matin, Soir...)"
+        @keydown.enter.prevent="createTicket()"
+      />
+      <button type="button" class="btn-primary shrink-0" :disabled="creating || !newTicketName.trim()" @click="createTicket()">
+        <span x-show="!creating">Créer</span>
+        <span x-show="creating" x-cloak>Création...</span>
+      </button>
+    </div>
+  </div>
+
+  <div x-show="!loading" x-cloak class="space-y-3">
+    <template x-for="ticket in tickets" :key="ticket.id">
+      <div class="card p-4">
+        <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span
+              class="w-2.5 h-2.5 rounded-full shrink-0"
+              :class="isActive(ticket) ? 'bg-accent-500' : 'bg-gray-300 dark:bg-gray-600'"
+              :title="isActive(ticket) ? 'Impression automatique activée' : 'Impression automatique désactivée'"
+            ></span>
+            <span class="font-semibold truncate" x-text="ticket.name"></span>
+          </div>
+
+          <span
+            class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0"
+            :class="
+              !ticket.lastRun ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' :
+              ticket.lastRun.status === 'success' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' :
+              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+            "
+            x-text="!ticket.lastRun ? 'Jamais imprimé' : (ticket.lastRun.status === 'success' ? 'Réussie' : 'Échec')"
+          ></span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <span x-text="scheduleSummary(ticket.schedule)"></span>
+          <template x-if="ticket.lastRun">
+            <span class="flex items-center gap-2">
+              <span aria-hidden="true">·</span>
+              <span>Dernière impression le <span x-text="formatTimestamp(ticket.lastRun.timestamp)"></span></span>
+            </span>
+          </template>
+        </div>
+        <p class="text-sm text-red-600 dark:text-red-400 mt-1" x-show="ticket.lastRun?.status === 'error'" x-text="ticket.lastRun?.message"></p>
+
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+          <a :href="'/tickets/' + ticket.id" class="btn-secondary">Éditer</a>
+          <button type="button" class="btn-secondary" :disabled="ticket.printing" @click="printNow(ticket)">
+            <span x-show="!ticket.printing">Imprimer maintenant</span>
+            <span x-show="ticket.printing" x-cloak>Envoi en cours...</span>
+          </button>
+          <button
+            type="button"
+            class="btn-secondary !text-red-600 dark:!text-red-400 !ring-red-200 dark:!ring-red-900"
+            @click="confirmDelete(ticket)"
+          >
+            <span x-show="!ticket.confirmingDelete">Supprimer</span>
+            <span x-show="ticket.confirmingDelete" x-cloak>Confirmer ?</span>
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <p class="text-gray-500 text-center py-8" x-show="!tickets.length">Aucun ticket pour l'instant. Créez-en un ci-dessus pour commencer.</p>
+  </div>
+
+  <div x-show="loading" class="text-gray-500">Chargement...</div>
+</div>
+
+<%- include('partials/foot') %>

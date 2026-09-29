@@ -30,23 +30,37 @@ Variables d'environnement : `PORT` (3000), `HOST` (0.0.0.0), `CONFIG_PATH` (`/da
 
 ## Architecture
 
+### Tickets multiples (`AppConfig.tickets: Ticket[]`)
+
+L'app imprime un ou plusieurs **tickets** indépendants (ex: un ticket "Matin" et un ticket "Soir"), chacun avec sa propre planification et sa propre sélection/config de modules (`modules: ModuleInstanceConfig[]`) — voir `Ticket` dans `src/config/types.ts`. `printer` (l'imprimante physique) reste global, partagé par tous les tickets ; `state.newsCache` reste global aussi mais ses clés sont préfixées par ticket (voir plus bas). La page **Tickets** (`/tickets`, `tickets.ejs`) liste tous les tickets (résumé de planification, impression immédiate, suppression avec confirmation double-clic en ligne — pas de `confirm()` natif, aucune modale dans le projet) ; chacun ouvre son propre **Constructeur** (`/tickets/:id`, `builder.ejs`) pour la configuration de ses modules **et** de sa planification (renommage + heure/activation par ticket, derrière le bouton "Paramètres" — pas d'édition inline sur la page Tickets, pour ne pas dupliquer ce réglage à deux endroits).
+
+`schedule: ScheduleConfig` (`Record<Weekday, DaySchedule>`, `src/config/types.ts`) planifie **jour par jour** : chaque jour de la semaine a sa propre heure et son propre statut activé/désactivé (ex: imprimer à 06:00 en semaine, 09:00 le week-end, rien le dimanche). `createSchedule(time, enabled)` construit un schedule avec la même valeur répétée sur les 7 jours, point de départ pratique pour un nouveau ticket ou une migration. `src/services/scheduler.service.ts` maintient une `Map<"ticketId:weekday", ScheduledTask>` : **une tâche cron par jour activé** de chaque ticket (pas juste une par ticket, puisque l'heure peut varier selon le jour), recréées en bloc (`rescheduleFromConfig()`) à chaque création/suppression de ticket ou changement de planification.
+
+Supprimer le dernier ticket restant est **autorisé** (état vide + CTA "Créer un ticket") : `tickets.service.ts` n'amorce jamais de ticket par défaut de façon paresseuse — le tout premier ticket ("Ticket du matin") n'est créé **qu'une seule fois**, à la toute première création du fichier de config (`ConfigStore.readOrInit()` dans `src/config/store.ts`), pour qu'une suppression volontaire ne soit jamais silencieusement annulée au prochain accès.
+
+**Migration** (4e du genre, mais la seule qui change la forme d'`AppConfig` lui-même plutôt que la config imbriquée d'un module, contrairement aux 3 suivantes) : avant le multi-tickets, la config stockait `schedule`+`modules` à plat. `ConfigStore.readOrInit()` laisse volontairement passer ces clés legacy telles quelles si elles existent (au lieu de les ignorer, ce qui les perdrait silencieusement avant qu'une migration n'ait la chance de les reprendre) ; `migrateSingleTicketConfig()` (`src/services/tickets.service.ts`, appelée via `ensureTickets()`) les regroupe en un ticket unique nommé "Ticket du matin", idempotente comme les migrations existantes.
+
+**5e migration**, plus ciblée : avant la planification par jour, `Ticket.schedule` était `{ time, enabled }` (une heure/activation unique pour toute la semaine). `migrateLegacyDailySchedule()` (`tickets.service.ts`, appelée juste après `migrateSingleTicketConfig()` dans `ensureTickets()`) détecte ce format sur un ticket existant et le convertit via `createSchedule(time, enabled)` (même valeur répétée sur les 7 jours) — comportement identique pour l'utilisateur tant qu'il ne personnalise pas un jour en particulier.
+
 ### Le pipeline "un seul rendu, deux sorties"
 
 Le cœur du projet : chaque module de ticket écrit ses lignes via `ReceiptContext` (`src/modules/types.ts`), implémenté par `ReceiptBuilder` (`src/receipt/context.ts`). Cette même liste de `ReceiptLine[]` sert ensuite à deux usages :
-- **Aperçu web** (`GET /api/receipt/preview`, page Constructeur) : les lignes sont directement affichées en HTML monospace.
+- **Aperçu web** (`GET /api/tickets/:id/receipt/preview`, Constructeur d'un ticket) : les lignes sont directement affichées en HTML monospace.
 - **Impression réelle** (`src/escpos/builder.ts` → `encodeReceipt`) : les mêmes lignes sont converties en commandes ESC/POS brutes (encodées selon le profil de codepage CP437/CP858/CP1252 via `iconv-lite`) et envoyées en TCP brut sur le port 9100 (`src/escpos/network-printer.ts`).
 
 Conséquence directe : **tout le word-wrap, l'alignement et la troncature doivent vivre dans `ReceiptBuilder`**, jamais dans un module ou dans le template EJS de l'aperçu — sinon aperçu et papier divergent. `rawLine()` existe spécifiquement pour les cas où un module a déjà calculé un alignement caractère par caractère (colonnes façon tableau, cf. `sports.module.ts`) et ne veut pas que `text()` renormalise les espaces.
 
 ### Orchestration et séparateurs (`src/services/receipt-builder.ts`)
 
-`buildReceiptLines()` exécute chaque module **actif** dans un `ReceiptBuilder` isolé (une instance par module), puis assemble les résultats. C'est volontaire : ça permet de détecter qu'un module n'a produit aucune ligne (ex: module Sports sans aucun match du jour) et de ne jamais lui accoler de séparateur — sinon on se retrouve avec un "-----" flottant entre deux sections vides. Les séparateurs eux-mêmes ("=" entre en-tête/corps et corps/pied de page, "-" entre les autres modules, jamais après le dernier module non vide) sont **calculés ici, pas dans les modules** : un module ne doit jamais appeler `ctx.separator()` en fin de rendu.
+`buildReceiptLines(ticketId, columns, widthPx)` exécute chaque module **actif de ce ticket** dans un `ReceiptBuilder` isolé (une instance par module), puis assemble les résultats. C'est volontaire : ça permet de détecter qu'un module n'a produit aucune ligne (ex: module Sports sans aucun match du jour) et de ne jamais lui accoler de séparateur — sinon on se retrouve avec un "-----" flottant entre deux sections vides. Les séparateurs eux-mêmes ("=" entre en-tête/corps et corps/pied de page, "-" entre les autres modules, jamais après le dernier module non vide) sont **calculés ici, pas dans les modules** : un module ne doit jamais appeler `ctx.separator()` en fin de rendu.
 
 Une erreur de `fetchData()` (API tierce down, etc.) n'interrompt pas les autres modules : elle est catchée et transformée en ligne "Module indisponible (...)" imprimée à la place du contenu normal du module.
 
 ### Modules de ticket (`src/modules/*.module.ts`)
 
-Chaque module implémente `ReceiptModule<TConfig, TData>` (`src/modules/types.ts`) : `id`, `name`, `description`, `dataSource` (URL affichée dans le Constructeur, absente si aucune API externe), `configSchema` (décrit le formulaire admin), `defaultConfig`, `fetchData(config)`, `renderReceipt(data, ctx, config)`. Le registre central est `src/modules/registry.ts` (`MODULE_REGISTRY`) — **c'est le seul endroit à modifier pour ajouter/retirer un module** ; l'UI (toggle, ordre, formulaire, aperçu) s'adapte automatiquement au tableau.
+Chaque module implémente `ReceiptModule<TConfig, TData>` (`src/modules/types.ts`) : `id`, `name`, `description`, `dataSource` (URL affichée dans le Constructeur, absente si aucune API externe), `configSchema` (décrit le formulaire admin), `defaultConfig`, `fetchData(config, context)`, `renderReceipt(data, ctx, config)`. Le registre central est `src/modules/registry.ts` (`MODULE_REGISTRY`) — **c'est le seul endroit à modifier pour ajouter/retirer un module** ; l'UI (toggle, ordre, formulaire, aperçu) s'adapte automatiquement au tableau.
+
+`context: FetchContext` (`{ ticketId }`) est passé à `fetchData` par `receipt-builder.ts` pour les modules dont l'état doit être scopé par ticket — seul `news.module.ts` s'en sert aujourd'hui (cache des résumés IA, clé `` `${ticketId}:${label}` ``, pour que deux tickets différents partageant un sujet au même libellé ne partagent jamais leur cache). Grâce au typage structurel de TypeScript (une fonction déclarée avec moins de paramètres reste assignable à un type qui en attend plus), les 7 autres modules n'ont pas besoin de déclarer ce second paramètre.
 
 `configSchema` pilote un formulaire **entièrement générique** côté admin (`src/views/builder.ejs` + `src/public/js/builder.js`) : aucun module n'a de code UI dédié pour ses champs simples (texte, nombre, booléen, select, image, tableau). Les champs plus spécialisés sortent de ce moule générique et nécessitent 3 endroits à faire cohabiter si tu en ajoutes un nouveau :
 1. Le type dans l'union `ConfigField` (`src/modules/types.ts`).
@@ -65,7 +79,7 @@ Chaque module a sa propre fiche dans `docs/modules/` (rendu exact sur le ticket,
 
 Un seul fichier JSON (`ConfigStore`, `src/config/store.ts`) : cache en mémoire + file d'attente d'écriture sérialisée (`writeQueue`) pour éviter toute corruption en cas d'écritures concurrentes (ex: sauvegarde config + mise à jour du statut de dernière impression en parallèle). `getConfig()` renvoie un clone profond (jamais l'objet interne) ; toute modification passe par `updateConfig(mutator)` qui clone → mute → persiste sur disque → remplace le cache.
 
-Quand tu changes la **forme** de la config stockée d'un module (ex: un champ texte devient un objet structuré), ajoute une migration dans `ensureInstances()`/`migrateLegacy*()` (`src/services/modules.service.ts`) plutôt que de casser silencieusement la config déjà enregistrée par un utilisateur — trois migrations de ce type existent déjà et servent de modèle (fusion Bourse+Crypto → séparation en deux modules, puis symbole texte → objet candidat de recherche pour ces deux mêmes modules, puis flux RSS à plat → sujets groupés pour le module Actualités).
+Quand tu changes la **forme** de la config stockée d'un module (ex: un champ texte devient un objet structuré), ajoute une migration dans `ensureModuleInstances()`/`migrateLegacy*()` (`src/services/modules.service.ts`, chacune prenant désormais un `ticketId` et opérant sur `draft.tickets.find(t => t.id === ticketId)!.modules`) plutôt que de casser silencieusement la config déjà enregistrée par un utilisateur — trois migrations de ce type existent déjà et servent de modèle (fusion Bourse+Crypto → séparation en deux modules, puis symbole texte → objet candidat de recherche pour ces deux mêmes modules, puis flux RSS à plat → sujets groupés pour le module Actualités). Une 4e migration, qui change la forme d'`AppConfig` lui-même plutôt que la config d'un module, est décrite dans "Tickets multiples" plus haut.
 
 ### Frontend
 
@@ -96,4 +110,4 @@ Ces API ne sont pas toujours bien documentées ou cohérentes entre leurs propre
 ## État actuel notable
 
 - Interface entièrement en français, pas de couche i18n/multi-langue.
-- La page de réglages imprimante est nommée `/printer` (`printer.ejs`), pas "Configuration".
+- La page de réglages imprimante est nommée `/settings` (`settings.ejs`), pas "Imprimante"/"Configuration".

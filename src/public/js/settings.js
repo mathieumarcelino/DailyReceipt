@@ -1,4 +1,4 @@
-function printerPage() {
+function settingsPage() {
   return {
     form: { host: "", port: 9100, profile: "CP858", columns: 48, printWidthPx: 576 },
     loading: true,

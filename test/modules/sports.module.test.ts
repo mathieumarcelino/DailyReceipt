@@ -75,7 +75,7 @@ describe("searchTeams", () => {
 
 describe("sportsModule.fetchData", () => {
   test("lève une erreur explicite si aucune équipe n'est configurée", async () => {
-    await assert.rejects(() => sportsModule.fetchData({ teams: [], showNextMatchIfNoGame: true }), /Configurez au moins une équipe à suivre/);
+    await assert.rejects(() => sportsModule.fetchData({ teams: [], showNextMatchIfNoGame: true }, { ticketId: "t1" }), /Configurez au moins une équipe à suivre/);
   });
 });
 
@@ -103,7 +103,7 @@ describe("sportsModule.renderReceipt — match du jour", () => {
       },
     });
 
-    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true });
+    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
 
@@ -146,7 +146,7 @@ describe("sportsModule.renderReceipt — résultat de la veille", () => {
       },
     });
 
-    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true });
+    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
 
@@ -177,7 +177,7 @@ describe("sportsModule.renderReceipt — résultat de la veille", () => {
       },
     });
 
-    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true });
+    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
     assert.ok(ctx.getLines().some((l) => l.text.includes("score indisponible")));
@@ -211,7 +211,7 @@ describe("sportsModule.renderReceipt — résultat de la veille", () => {
     const data = await sportsModule.fetchData({
       teams: [{ team: team({ sport: "basketball", leagueSlug: "nba", name: "Lakers" }) }],
       showNextMatchIfNoGame: true,
-    });
+    }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
 
@@ -243,7 +243,7 @@ describe("sportsModule.renderReceipt — match à venir", () => {
       },
     });
 
-    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true });
+    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: true }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
 
@@ -259,7 +259,7 @@ describe("sportsModule.renderReceipt — match à venir", () => {
       },
     });
 
-    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: false });
+    const data = await sportsModule.fetchData({ teams: [{ team: team() }], showNextMatchIfNoGame: false }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
     assert.deepEqual(ctx.getLines(), []); // le module reste muet plutôt que d'imprimer une section vide
@@ -278,7 +278,7 @@ describe("sportsModule.renderReceipt — plusieurs équipes", () => {
     const data = await sportsModule.fetchData({
       teams: [{ team: team() }, { team: team({ teamId: "1", name: "Paris Saint-Germain" }) }],
       showNextMatchIfNoGame: true,
-    });
+    }, { ticketId: "t1" });
     const ctx = new ReceiptBuilder(48, 576);
     sportsModule.renderReceipt(data, ctx, { teams: [], showNextMatchIfNoGame: true });
 

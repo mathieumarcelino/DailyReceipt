@@ -79,7 +79,7 @@ describe("weatherModule.fetchData", () => {
     };
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse(fixture));
 
-    const data = await weatherModule.fetchData(weatherConfig({ city: "Villebon-sur-Yvette", latitude: 48.7069, longitude: 2.2469 }));
+    const data = await weatherModule.fetchData(weatherConfig({ city: "Villebon-sur-Yvette", latitude: 48.7069, longitude: 2.2469 }), { ticketId: "t1" });
 
     assert.deepEqual(data, {
       current: { temperature: 12.4 },
@@ -114,7 +114,7 @@ describe("weatherModule.fetchData", () => {
       fakeJsonResponse({ current: { temperature_2m: 0, time: "2026-01-01T00:00" }, daily: minimalDaily(), hourly: minimalHourly() }),
     );
 
-    const data = await weatherModule.fetchData(weatherConfig());
+    const data = await weatherModule.fetchData(weatherConfig(), { ticketId: "t1" });
 
     assert.deepEqual(
       data.hourlyChart.map((p) => p.label),
@@ -133,7 +133,7 @@ describe("weatherModule.fetchData", () => {
   test("hourlyChart est vide si les données horaires sont absentes/malformées, sans faire échouer le module", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({ current: { temperature_2m: 0, time: "2026-01-01T00:00" }, daily: minimalDaily() }));
 
-    const data = await weatherModule.fetchData(weatherConfig());
+    const data = await weatherModule.fetchData(weatherConfig(), { ticketId: "t1" });
     assert.deepEqual(data.hourlyChart, []);
     assert.deepEqual(data.hourlyPrecipitationChart, []);
   });
@@ -145,7 +145,7 @@ describe("weatherModule.fetchData", () => {
       return fakeJsonResponse({ current: { temperature_2m: 0, time: "2026-01-01T00:00" }, daily: minimalDaily(), hourly: minimalHourly() });
     });
 
-    await weatherModule.fetchData(weatherConfig());
+    await weatherModule.fetchData(weatherConfig(), { ticketId: "t1" });
 
     const url = capturedUrl as URL;
     assert.equal(url.searchParams.get("latitude"), "48.8566");
@@ -157,7 +157,7 @@ describe("weatherModule.fetchData", () => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({}, 500));
 
     await assert.rejects(
-      () => weatherModule.fetchData(weatherConfig()),
+      () => weatherModule.fetchData(weatherConfig(), { ticketId: "t1" }),
       /Open-Meteo a répondu 500/,
     );
   });

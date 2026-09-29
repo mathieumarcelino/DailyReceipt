@@ -68,7 +68,7 @@ describe("stocksModule.fetchData", () => {
       }),
     );
 
-    const data = await stocksModule.fetchData({ assets: [{ stock: candidate() }] });
+    const data = await stocksModule.fetchData({ assets: [{ stock: candidate() }] }, { ticketId: "t1" });
     assert.equal(data.quotes.length, 1);
     const [q] = data.quotes;
     assert.equal(q.label, "Apple Inc.");
@@ -82,21 +82,21 @@ describe("stocksModule.fetchData", () => {
       fakeJsonResponse({ chart: { result: [{ meta: { regularMarketPrice: 100, currency: "USD", longName: "Apple Inc." } }] } }),
     );
 
-    const data = await stocksModule.fetchData({ assets: [{ stock: candidate(), label: "Mon label perso" }] });
+    const data = await stocksModule.fetchData({ assets: [{ stock: candidate(), label: "Mon label perso" }] }, { ticketId: "t1" });
     assert.equal(data.quotes[0].label, "Mon label perso");
   });
 
   test("dégrade en 'N/A' sans faire échouer tout le module si l'API échoue pour une valeur", async (t) => {
     t.mock.method(globalThis, "fetch", async () => fakeJsonResponse({}, 500));
 
-    const data = await stocksModule.fetchData({ assets: [{ stock: candidate() }] });
+    const data = await stocksModule.fetchData({ assets: [{ stock: candidate() }] }, { ticketId: "t1" });
     assert.equal(data.quotes[0].price, null);
     assert.equal(data.quotes[0].label, "Apple Inc."); // repli sur le nom connu à la recherche
     assert.equal(data.quotes[0].error, "non disponible");
   });
 
   test("ignore les entrées sans action sélectionnée (stock null ou symbole manquant)", async () => {
-    const data = await stocksModule.fetchData({ assets: [{ stock: null }] });
+    const data = await stocksModule.fetchData({ assets: [{ stock: null }] }, { ticketId: "t1" });
     assert.deepEqual(data.quotes, []);
   });
 });

@@ -7,6 +7,7 @@ import ejs from "ejs";
 import { rescheduleFromConfig } from "./services/scheduler.service";
 import pagesRoutes from "./routes/pages.routes";
 import configRoutes from "./routes/config.routes";
+import ticketsRoutes from "./routes/tickets.routes";
 import modulesRoutes from "./routes/modules.routes";
 import printRoutes from "./routes/print.routes";
 import sportsRoutes from "./routes/sports.routes";
@@ -34,6 +35,7 @@ async function main() {
 
   await app.register(pagesRoutes);
   await app.register(configRoutes);
+  await app.register(ticketsRoutes);
   await app.register(modulesRoutes);
   await app.register(printRoutes);
   await app.register(sportsRoutes);
@@ -47,7 +49,7 @@ async function main() {
     reply.code(err.statusCode ?? 500).send({ error: err.message ?? "Erreur interne" });
   });
 
-  rescheduleFromConfig();
+  await rescheduleFromConfig();
 
   await app.listen({ port: PORT, host: HOST });
 }
